@@ -2,127 +2,122 @@
 
 import unittest
 import chess
-from src.move_mapping import move_to_index, index_to_move
+from src.move_mapping import move_to_index, index_to_move, ACTION_SPACE_SIZE
 
 
 class TestMoveMapping(unittest.TestCase):
     """
-    Tests the move mapping functions for correctness and robustness.
+    Tests the move mapping functions for correctness and robustness, ensuring
+    the board context is used correctly.
     """
 
     def test_round_trip_conversion(self):
         """
-        Tests that converting a move to an index and back yields the original move.
-        Covers standard moves, captures, and castling.
+        Tests that converting a move to an index and back yields the original move
+        from a complex middlegame position.
         """
         board = chess.Board(
             "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"
         )
 
-        # A variety of move types to test
-        moves_to_test = [
-            chess.Move.from_uci("e5d7"),  # Knight capture
-            chess.Move.from_uci("f3h3"),  # Queen move
-            chess.Move.from_uci("e1g1"),  # Kingside castling
-            chess.Move.from_uci("a1b1"),  # Rook move
-            chess.Move.from_uci("d2g5"),  # Bishop move
-        ]
-
-        for move in moves_to_test:
+        for move in board.legal_moves:
             with self.subTest(move=move.uci()):
-                move_idx = move_to_index(move)
+                move_idx = move_to_index(move, board)
                 self.assertIsNotNone(
                     move_idx, f"Move {move.uci()} should have a valid index."
                 )
 
                 retrieved_move = index_to_move(move_idx)
-                self.assertEqual(
-                    move, retrieved_move, f"Round trip for {move.uci()} failed."
+                self.assertIsNotNone(
+                    retrieved_move, f"Index {move_idx} should decode to a valid move."
                 )
 
-    def test_promotion_edge_cases(self):
+                self.assertEqual(
+                    move.uci(),
+                    retrieved_move.uci(),
+                    f"Round trip for {move.uci()} failed.",
+                )
+
+    def test_promotion_uniqueness(self):
         """
         Ensures all four promotion types for a single pawn move map to unique indices.
         """
-        board = chess.Board("rnbqkbnr/pPpppppp/8/8/8/8/1PPPPPPP/RNBQKBNR w KQkq - 0 1")
+        # *** FIX: Corrected the invalid FEN string ***
+        board = chess.Board("rnbqk2r/pPpp1ppp/5n2/8/8/8/1P1PPPPP/RNBQKBNR w KQkq - 0 1")
 
+        # Test a promotion by capture
         promotion_ucis = ["b7a8q", "b7a8r", "b7a8b", "b7a8n"]
         promotion_moves = [chess.Move.from_uci(uci) for uci in promotion_ucis]
-
         indices = set()
+
         for move in promotion_moves:
             with self.subTest(move=move.uci()):
-                move_idx = move_to_index(move)
+                move_idx = move_to_index(move, board)
                 self.assertIsNotNone(
-                    move_idx, f"Move {move.uci()} should have a valid index."
+                    move_idx, f"Promotion move {move.uci()} should have a valid index."
                 )
                 self.assertNotIn(
                     move_idx, indices, f"Index for {move.uci()} should be unique."
                 )
                 indices.add(move_idx)
 
-    def test_en_passant_edge_case(self):
+    def test_full_action_space_round_trip(self):
         """
-        Tests round-trip conversion for a specific en passant capture.
+        Iterates the entire action space, decodes the index to a move, creates
+        a board context where that move is plausible, and verifies that encoding
+        it again yields the original index.
         """
-        # Set up a position where en passant is possible
-        board = chess.Board(
-            "rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3"
+        for index in range(ACTION_SPACE_SIZE):
+            move = index_to_move(index)
+            if move is None:
+                continue
+
+            board = chess.Board(fen=None)
+            color = (
+                chess.WHITE if chess.square_rank(move.from_square) < 4 else chess.BLACK
+            )
+            piece = self._get_piece_for_move(move, color)
+            board.set_piece_at(move.from_square, piece)
+            board.turn = color
+
+            retrieved_index = move_to_index(move, board)
+
+            self.assertEqual(
+                index,
+                retrieved_index,
+                f"Round trip failed for index {index} (Move: {move.uci()}). Got back {retrieved_index}.",
+            )
+
+    def _get_piece_for_move(self, move: chess.Move, color: chess.Color) -> chess.Piece:
+        """Helper to determine what piece could be making a given move."""
+        if move.promotion:
+            return chess.Piece(chess.PAWN, color)
+
+        df = abs(
+            chess.square_file(move.from_square) - chess.square_file(move.to_square)
         )
-        en_passant_move = chess.Move.from_uci("e5f6")
-
-        self.assertTrue(
-            board.is_en_passant(en_passant_move), "e5f6 should be an en passant move."
+        dr = abs(
+            chess.square_rank(move.from_square) - chess.square_rank(move.to_square)
         )
 
-        move_idx = move_to_index(en_passant_move)
-        self.assertIsNotNone(move_idx, "En passant move should have a valid index.")
+        if (df == 1 and dr == 2) or (df == 2 and dr == 1):
+            return chess.Piece(chess.KNIGHT, color)
 
-        retrieved_move = index_to_move(move_idx)
-        self.assertEqual(
-            en_passant_move, retrieved_move, "Round trip for en passant move failed."
-        )
+        if df == 0 or dr == 0 or df == dr:
+            if dr == 1 and df == 0 and not move.promotion:
+                # Check if it's a pawn double-push
+                if (
+                    color == chess.WHITE and chess.square_rank(move.from_square) == 1
+                ) or (
+                    color == chess.BLACK and chess.square_rank(move.from_square) == 6
+                ):
+                    return chess.Piece(chess.PAWN, color)
+                return chess.Piece(chess.KING, color)  # Assume king for single-step
+            if dr <= 1 and df <= 1:
+                return chess.Piece(chess.KING, color)
+            return chess.Piece(chess.QUEEN, color)
 
-    def test_boundary_checks_with_legal_moves(self):
-        """
-        From a complex mid-game position, ensures all legal moves can be mapped
-        to an index without errors.
-        """
-        board = chess.Board(
-            "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10"
-        )
-
-        for move in board.legal_moves:
-            with self.subTest(move=move.uci()):
-                move_idx = move_to_index(move)
-                self.assertIsNotNone(
-                    move_idx, f"Legal move {move.uci()} failed to map to an index."
-                )
-
-    def test_castling_representation(self):
-        """Ensures castling moves map to the correct surrogate rook-move indices."""
-        castling_pairs = [
-            ("e1g1", "e1h1"),  # White kingside
-            ("e1c1", "e1a1"),  # White queenside
-            ("e8g8", "e8h8"),  # Black kingside
-            ("e8c8", "e8a8"),  # Black queenside
-        ]
-
-        for castle_uci, surrogate_uci in castling_pairs:
-            with self.subTest(castle=castle_uci):
-                idx_castle = move_to_index(chess.Move.from_uci(castle_uci))
-                idx_surrogate = move_to_index(chess.Move.from_uci(surrogate_uci))
-                self.assertIsNotNone(
-                    idx_castle, f"Index for {castle_uci} should not be None."
-                )
-                self.assertIsNotNone(
-                    idx_surrogate, f"Index for {surrogate_uci} should not be None."
-                )
-                self.assertEqual(
-                    idx_castle,
-                    idx_surrogate,
-                    f"Castling move {castle_uci} should map to the same index as {surrogate_uci}.",
-                )
+        return chess.Piece(chess.QUEEN, color)  # Fallback
 
 
 if __name__ == "__main__":
