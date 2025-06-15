@@ -1,0 +1,64 @@
+[Event "Test Game 1: Valid"]
+[Site "Test"]
+[Date A "2023.01.01"]
+[Round "?"]
+[White "Test_White_High"]
+[Black "Test_Black_High"]
+[Result "1-0"]
+[WhiteElo "2500"]
+[BlackElo "2550"]
+[Termination "Normal"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 1-0
+
+[Event "Test Game 2: Low ELO"]
+[Site "Test"]
+[Date "2023.01.02"]
+[Round "?"]
+[White "Test_White_High"]
+[Black "Test_Black_Low"]
+[Result "1-0"]
+[WhiteElo "2500"]
+[BlackElo "2100"]
+[Termination "Normal"]
+
+1. d4 d5 2. c4 1-0
+
+[Event "Test Game 3: Bad Termination"]
+[Site "Test"]
+[Date "2023.01.03"]
+[Round "?"]
+[White "Test_White_High"]
+[Black "Test_Black_High"]
+[Result "0-1"]
+[WhiteElo "2600"]
+[BlackElo "2650"]
+[Termination "Abandoned"]
+
+1. g3 0-1
+
+[Event "Test Game 4: Valid, Black Wins"]
+[Site "Test"]
+[Date "2023.01.04"]
+[Round "?"]
+[White "Test_White_High"]
+[Black "Test_Black_High"]
+[Result "0-1"]
+[WhiteElo "2450"]
+[BlackElo "2400"]
+[Termination "Normal"]
+
+1. f4 e5 2. g4 Qh4# 0-1
+
+[Event "Test Game 5: Valid Draw"]
+[Site "Test"]
+[Date "2023.01.05"]
+[Round "?"]
+[White "Test_White_High"]
+[Black "Test_Black_High"]
+[Result "1/2-1/2"]
+[WhiteElo "2700"]
+[BlackElo "2700"]
+[Termination "Normal"]
+
+1. e4 e5 2. Nf3 Nf6 1/2-1/2
