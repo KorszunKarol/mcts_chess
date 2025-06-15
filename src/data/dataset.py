@@ -4,6 +4,7 @@ import chess.pgn
 import numpy as np
 import tensorflow as tf
 from typing import Generator, Tuple
+import os
 
 from src.encoder import Encoder
 from src.move_mapping import move_to_index, ACTION_SPACE_SIZE
@@ -122,6 +123,43 @@ def create_dataset(
 
     dataset = tf.data.Dataset.from_generator(
         lambda: pgn_data_generator(pgn_path, min_elo, encoder),
+        output_signature=output_signature,
+    )
+
+    dataset = dataset.map(lambda state, policy, value: (state, (value, policy)))
+
+    dataset = dataset.shuffle(shuffle_buffer_size)
+    dataset = dataset.batch(batch_size)
+    dataset = dataset.prefetch(buffer_size=tf.data.AUTOTUNE)
+
+    return dataset
+
+def create_dataset_from_folder(
+    folder_path: str,
+    batch_size: int,
+    min_elo: int = 2400,
+    shuffle_buffer_size: int = 100_000,
+) -> tf.data.Dataset:
+    """
+    Builds a tf.data.Dataset pipeline for training from a folder of PGN files.
+    """
+    encoder = Encoder()
+
+    output_signature = (
+        tf.TensorSpec(shape=STATE_SHAPE, dtype=tf.float32),
+        tf.TensorSpec(shape=POLICY_SHAPE, dtype=tf.float32),
+        tf.TensorSpec(shape=(), dtype=tf.float32),
+    )
+
+    def folder_generator():
+        """A generator that yields data from all PGN files in a folder."""
+        pgn_files = sorted([f for f in os.listdir(folder_path) if f.endswith('.pgn')])
+        for pgn_file in pgn_files:
+            file_path = os.path.join(folder_path, pgn_file)
+            yield from pgn_data_generator(file_path, min_elo, encoder)
+
+    dataset = tf.data.Dataset.from_generator(
+        folder_generator,
         output_signature=output_signature,
     )
 
