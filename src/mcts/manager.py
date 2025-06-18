@@ -7,7 +7,7 @@ import logging
 from typing import List, Dict, Optional, TYPE_CHECKING
 from unittest.mock import MagicMock
 
-from src.model import create_model, ACTION_SPACE_SIZE
+from src.transformer_model import create_model, ACTION_SPACE_SIZE
 
 if TYPE_CHECKING:
     from src.mcts.controller import SharedMemoryConfig
@@ -147,15 +147,31 @@ class EvaluationManager(Process):
 
     def _get_input_from_buffer(self, buffer_name: str) -> np.ndarray:
         """Get input data from a shared memory buffer."""
-        return self.input_arrays[buffer_name].copy()  # Copy to avoid race conditions
+        return self.input_arrays[buffer_name]  # No copy needed, direct view
 
     def _write_output_to_buffer(
-        self, buffer_name: str, value: float, policy_logits: np.ndarray
+        self, buffer_name: str, value_probs: np.ndarray, policy_logits: np.ndarray
     ):
-        """Write output data to a shared memory buffer."""
+        """Write the raw model output to a shared memory buffer."""
         output_array = self.output_arrays[buffer_name]
-        output_array[0] = value  # First element is the value
-        output_array[1:] = policy_logits.flatten()  # Rest is policy logits
+        # First 3 elements are the value probabilities
+        output_array[0:3] = value_probs.flatten()
+        # The rest are the policy logits
+        output_array[3:] = policy_logits.flatten()
+
+    def _cleanup_shared_memory(self):
+        """Clean up shared memory handles before exit."""
+        logger.info("EvaluationManager cleaning up its shared memory handles...")
+        # Clear numpy array views first to remove references
+        self.input_arrays.clear()
+        self.output_arrays.clear()
+        # Then close (but don't unlink) the shared memory blocks
+        for shm in self.shared_memory_blocks.values():
+            try:
+                shm.close()
+            except Exception as e:
+                logger.warning(f"Error closing shared memory: {e}")
+        self.shared_memory_blocks.clear()
 
     def run(self):
         """
@@ -177,19 +193,23 @@ class EvaluationManager(Process):
             self.model = create_mock_model_for_manager()
             logger.info("Using simple mock model for testing.")
         else:
-            self.model = create_model()
-            if self.weights_path:
-                try:
-                    self.model.load_weights(self.weights_path)
-                    logger.info("Model weights loaded successfully.")
-                except Exception as e:
-                    logger.error(
-                        f"Could not load model weights from {self.weights_path}: {e}"
-                    )
-            else:
-                logger.warning(
-                    "No model weights path provided. Using a randomly initialized model."
+            try:
+                # Use load_model and provide a custom_objects mapping for the
+                # 'swish' activation, which is how tf.nn.silu is often serialized.
+                # We also set compile=False as we only need the model for inference,
+                # not for training, which avoids issues with custom optimizers.
+                self.model = tf.keras.models.load_model(
+                    self.weights_path,
+                    custom_objects={"swish": tf.nn.silu},
+                    compile=False,
                 )
+                logger.info(f"Keras model loaded successfully from {self.weights_path}.")
+            except Exception as e:
+                logger.error(
+                    f"Could not load Keras model from {self.weights_path}: {e}",
+                    exc_info=True,
+                )
+                return
 
         requests_batch: List[EvaluationRequest] = []
 
@@ -251,56 +271,97 @@ class EvaluationManager(Process):
 
             requests_batch.clear()
 
+        # Clean up before exit
+        self._cleanup_shared_memory()
+        logger.info("EvaluationManager has shut down cleanly.")
+
     def _process_batch_with_shared_memory(
         self, requests_batch: List[EvaluationRequest]
     ):
         """Process a batch of requests using shared memory for data transfer."""
-        batch_inputs = []
+        batch_inputs = [
+            self._get_input_from_buffer(
+                self.shared_memory_config.buffer_names[req["buffer_index"]]
+            )
+            for req in requests_batch
+        ]
 
-        # Read input data from shared memory buffers
-        for req in requests_batch:
-            buffer_name = self.shared_memory_config.buffer_names[req["buffer_index"]]
-            input_data = self._get_input_from_buffer(buffer_name)
-            batch_inputs.append(input_data)
+        if not batch_inputs:
+            return
 
-        # Convert to tensor for model inference
         input_tensor = np.array(batch_inputs)
-        logger.debug(
-            f"Manager processing batch of {len(requests_batch)} using shared memory. "
-            f"Input tensor shape: {input_tensor.shape}"
-        )
-        values, policy_logits = self.model.predict(input_tensor, verbose=0)
+        logger.debug(f"Manager processing batch of {len(requests_batch)}.")
 
-        # Write output data to shared memory and send response
-        for i, req in enumerate(requests_batch):
-            buffer_name = self.shared_memory_config.buffer_names[req["buffer_index"]]
-            self._write_output_to_buffer(
-                buffer_name, float(values[i]), policy_logits[i]
+        try:
+            value_probs_batch, policy_logits_batch = self.model.predict(
+                input_tensor, verbose=0
             )
 
-            worker_id = req["worker_id"]
-            response = {"worker_id": worker_id, "buffer_index": req["buffer_index"]}
-            self.response_qs[worker_id].put(response)
+            for i, req in enumerate(requests_batch):
+                buffer_name = self.shared_memory_config.buffer_names[req["buffer_index"]]
+
+                # Pass the raw 3-element array directly
+                self._write_output_to_buffer(
+                    buffer_name, value_probs_batch[i], policy_logits_batch[i]
+                )
+
+                worker_id = req["worker_id"]
+                response = {"buffer_index": req["buffer_index"], "worker_id": worker_id}
+
+                try:
+                    if worker_id < len(self.response_qs):
+                        response_q = self.response_qs[worker_id]
+                        logger.info(
+                            f"MANAGER: Sending response for buffer {req['buffer_index']} to worker {worker_id} on queue {id(response_q)}"
+                        )
+                        response_q.put(response)
+                    else:
+                        logger.error(f"Invalid worker_id {worker_id} received, cannot send response.")
+                except Exception as e:
+                    logger.error(
+                        f"MANAGER: Failed to send response to worker {worker_id}: {e}"
+                    )
+
+        except Exception as e:
+            logger.error(f"Error during model prediction: {e}", exc_info=True)
+            for req in requests_batch:
+                worker_id = req["worker_id"]
+                response = {
+                    "worker_id": worker_id,
+                    "buffer_index": req["buffer_index"],
+                    "error": str(e),
+                }
+                self.response_qs[worker_id].put(response)
 
     def _process_batch_with_queues(self, requests_batch: List[EvaluationRequest]):
         """Process a batch of requests using queues for data transfer (fallback)."""
-        # This method is used when shared memory is not available
         batch_inputs = [req["encoded_state"] for req in requests_batch]
+        if not batch_inputs:
+            return
+
         input_tensor = np.array(batch_inputs)
+        logger.debug(f"Manager processing batch of {len(requests_batch)} using queues.")
 
-        logger.debug(
-            f"Manager processing batch of {len(requests_batch)} using queues. "
-            f"Input tensor shape: {input_tensor.shape}"
-        )
+        try:
+            value_probs_batch, policy_logits_batch = self.model.predict(
+                input_tensor, verbose=0
+            )
 
-        values, policy_logits = self.model.predict(input_tensor, verbose=0)
+            for i, req in enumerate(requests_batch):
+                worker_id = req["worker_id"]
 
-        # Send responses back to workers via their dedicated queues
-        for i, req in enumerate(requests_batch):
-            worker_id = req["worker_id"]
-            response = {
-                "worker_id": worker_id,
-                "value": float(values[i]),
-                "policy_logits": policy_logits[i],
-            }
-            self.response_qs[worker_id].put(response)
+                # Send the raw 3-element array in the queue under the 'value' key
+                # to match what the worker's queue-based logic expects.
+                response = {
+                    "worker_id": worker_id,
+                    "value": value_probs_batch[i],
+                    "policy_logits": policy_logits_batch[i],
+                }
+                self.response_qs[worker_id].put(response)
+
+        except Exception as e:
+            logger.error(f"Error during model prediction (queues): {e}", exc_info=True)
+            for req in requests_batch:
+                worker_id = req["worker_id"]
+                response = {"worker_id": worker_id, "error": str(e)}
+                self.response_qs[worker_id].put(response)

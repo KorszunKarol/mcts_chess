@@ -24,9 +24,9 @@ logger = logging.getLogger(__name__)
 DEFAULT_BUFFER_COUNT = 256
 INPUT_BUFFER_SIZE = 8 * 8 * 34 * 4  # (8,8,34) float32 = 8704 bytes
 OUTPUT_BUFFER_SIZE = (
-    1 + 4672
-) * 4  # value (1) + policy_logits (4672) float32 = 18692 bytes
-TOTAL_BUFFER_SIZE = INPUT_BUFFER_SIZE + OUTPUT_BUFFER_SIZE  # 27396 bytes per buffer
+    3 + 4672
+) * 4  # value (3) + policy_logits (4672) float32 = 18700 bytes
+TOTAL_BUFFER_SIZE = INPUT_BUFFER_SIZE + OUTPUT_BUFFER_SIZE  # 27404 bytes per buffer
 
 
 @dataclass
@@ -46,7 +46,7 @@ class SharedMemoryConfig:
 
     def get_output_size(self) -> int:
         """Get the size in bytes for output data (value + policy)."""
-        return int((1 + self.policy_size) * np.dtype(self.output_dtype).itemsize)
+        return int((3 + self.policy_size) * np.dtype(self.output_dtype).itemsize)
 
     def get_total_size(self) -> int:
         """Get the total size in bytes for one buffer."""
@@ -128,6 +128,7 @@ class MCTSController:
         self.result_q = Queue()
         self.request_q = Queue()
         self.response_qs = [Queue() for _ in range(self.num_workers)]
+        logger.info(f"Created {len(self.response_qs)} dedicated response queues.")
 
         # Create shared memory pool
         self._create_shared_memory_pool()
@@ -142,7 +143,7 @@ class MCTSController:
 
         Each buffer contains space for:
         - Input: encoded board state (8,8,34) float32
-        - Output: value (1 float) + policy logits (4672 floats)
+        - Output: value (3 floats) + policy logits (4672 floats)
         """
         self.shared_memory_config = SharedMemoryConfig(buffer_count=self.buffer_count)
         buffer_size = self.shared_memory_config.get_total_size()
@@ -205,12 +206,14 @@ class MCTSController:
             # Start SearchWorker processes
             logger.info(f"Starting {self.num_workers} SearchWorker processes...")
             for worker_id in range(self.num_workers):
+                response_q = self.response_qs[worker_id]
+                logger.info(f"Assigning response queue {id(response_q)} to Worker {worker_id}")
                 worker = SearchWorker(
                     worker_id=worker_id,
                     task_q=self.task_q,
                     result_q=self.result_q,
                     request_q=self.request_q,
-                    response_q=self.response_qs[worker_id],
+                    response_q=response_q,
                     c_puct=1.0,
                     n_scl=1000,
                     shared_memory_config=self.shared_memory_config,
@@ -254,7 +257,7 @@ class MCTSController:
 
         # Wait for result
         try:
-            result = self.result_q.get(timeout=60.0)  # 60 second timeout
+            result = self.result_q.get()
             logger.debug(f"Received search result for {fen}")
             return result
         except Exception as e:

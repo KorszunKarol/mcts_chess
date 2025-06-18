@@ -5,11 +5,12 @@ import chess
 import numpy as np
 import logging
 from dataclasses import dataclass
-import tensorflow as tf
 import threading
 import time
+import cProfile
+import pstats
 
-from src.mcts.node import MCTSNode
+from node import MCTSNode
 from src.encoder import Encoder
 from src.move_mapping import index_to_move, ACTION_SPACE_SIZE, move_to_index
 
@@ -61,6 +62,7 @@ class RemoteEvaluator:
         self.worker_id = worker_id
         self.request_q = request_q
         self.response_q = response_q
+        logger.info(f"WORKER {worker_id} RemoteEvaluator received response queue {id(response_q)}")
         self.encoder = Encoder()
         self.shared_memory_config = shared_memory_config
 
@@ -131,73 +133,65 @@ class RemoteEvaluator:
         """Read output data from a shared memory buffer."""
         buffer_name = self.shared_memory_config.buffer_names[buffer_index]
         output_array = self.output_arrays[buffer_name]
-        value = float(output_array[0])
-        policy_logits = output_array[1:].copy()
+
+        # The model's value head outputs a 3-element vector.
+        value_probs = output_array[0:3]
+
+        # Calculate the expected value: (win * 1) + (draw * 0) + (loss * -1)
+        # Assuming the model's output softmax is in the order [loss, draw, win]
+        value = float(value_probs[2] - value_probs[0])
+
+        # The policy logits start AFTER the 3 value probabilities.
+        policy_logits = output_array[3:].copy()
+
         return value, policy_logits
 
     def evaluate(self, board: chess.Board) -> tuple[float, Dict[chess.Move, float]]:
         """
-        Encodes the board, sends it for evaluation, and waits for the result.
-        Uses shared memory for high-throughput data transfer when available.
+        Encodes the board, sends it for evaluation via a dedicated buffer,
+        and blocks waiting ONLY for its specific response. This method is
+        now guaranteed to be race-condition-free.
         """
-        if self.shared_memory_config:
-            return self._evaluate_with_shared_memory(board)
-        else:
-            return self._evaluate_with_queues(board)
+        if not self.shared_memory_config:
+            raise RuntimeError(
+                "RemoteEvaluator requires shared memory to be configured for performance and stability."
+            )
 
-    def _evaluate_with_shared_memory(
-        self, board: chess.Board
-    ) -> tuple[float, Dict[chess.Move, float]]:
-        """Evaluate using shared memory for data transfer."""
-
+        # 1. Prepare the data
         encoded_state = self.encoder.encode(board)
 
+        # 2. Allocate a unique buffer for this worker for this request.
+        #    This ensures no other worker can interfere with its data.
         buffer_index = self._allocate_buffer()
-
         self._write_input_to_buffer(buffer_index, encoded_state)
 
+        # 3. Create the lightweight request message
         request = {"worker_id": self.worker_id, "buffer_index": buffer_index}
+
+        # 4. Send the request to the central manager
+        logger.info(f"[Worker {self.worker_id}] > Sending request for buffer {buffer_index}.")
         self.request_q.put(request)
 
-        while True:
-            response = self.response_q.get()
-            if response.get("worker_id") == self.worker_id:
+        # 5. Block and wait on this worker's DEDICATED response queue.
+        #    There is no loop. There is no checking worker_id. The architecture
+        #    guarantees the message on this queue is for this worker.
+        logger.info(f"[Worker {self.worker_id}] ? Waiting for response...")
+        response = self.response_q.get()  # This is the only 'get' call.
+        logger.info(
+            f"[Worker {self.worker_id}] < Received response for buffer {response.get('buffer_index')}."
+        )
 
-                if "error" in response:
-                    raise RuntimeError(f"Evaluation failed: {response['error']}")
+        # 6. Check for errors from the manager
+        if "error" in response:
+            raise RuntimeError(f"Evaluation failed in manager: {response['error']}")
 
-                value, policy_logits = self._read_output_from_buffer(
-                    response["buffer_index"]
-                )
-                policy = self._decode_policy(policy_logits, board)
+        # 7. Process the results from the buffer specified in the response
+        value, policy_logits = self._read_output_from_buffer(
+            response["buffer_index"]
+        )
+        policy = self._decode_policy(policy_logits, board)
 
-                return value, policy
-            else:
-
-                self.response_q.put(response)
-
-    def _evaluate_with_queues(
-        self, board: chess.Board
-    ) -> tuple[float, Dict[chess.Move, float]]:
-        """Fallback evaluation using queues for backward compatibility."""
-        encoded_state = self.encoder.encode(board)
-        request = {"worker_id": self.worker_id, "encoded_state": encoded_state}
-        self.request_q.put(request)
-
-        while True:
-            response = self.response_q.get()
-            if response.get("worker_id") == self.worker_id:
-
-                if "error" in response:
-                    raise RuntimeError(f"Evaluation failed: {response['error']}")
-
-                policy_logits = response["policy_logits"]
-                policy = self._decode_policy(policy_logits, board)
-
-                return response["value"], policy
-            else:
-
-                self.response_q.put(response)
+        return value, policy
 
     def _decode_policy(
         self, logits: np.ndarray, board: chess.Board
@@ -216,11 +210,14 @@ class RemoteEvaluator:
         if not legal_move_indices:
             return {}
 
-        mask = np.full(logits.shape, -np.inf, dtype=np.float32)
-        mask[legal_move_indices] = 0.0
-        masked_logits = logits + mask
+        mask = np.ones(logits.shape, dtype=bool)
+        mask[legal_move_indices] = False
+        logits[mask] = -np.inf  # Apply mask for illegal moves
 
-        probabilities = tf.nn.softmax(masked_logits).numpy()
+        # Numerically stable softmax using NumPy
+        # Subtract the max for stability before exponentiating
+        exp_logits = np.exp(logits - np.max(logits))
+        probabilities = exp_logits / np.sum(exp_logits)
 
         policy_dict = {
             move: float(probabilities[move_to_index(move, board)])
@@ -228,10 +225,25 @@ class RemoteEvaluator:
             if move_to_index(move, board) is not None
         }
 
+        # Renormalize just in case of floating point inaccuracies
         total_prob = sum(policy_dict.values())
         if total_prob > 0:
             return {move: prob / total_prob for move, prob in policy_dict.items()}
         return {}
+
+    def cleanup(self):
+        """Clean up shared memory handles before worker exit."""
+        logger.debug(f"Worker {self.worker_id} cleaning up its shared memory handles...")
+        # Clear numpy array views first to remove references
+        self.input_arrays.clear()
+        self.output_arrays.clear()
+        # Then close (but don't unlink) the shared memory blocks
+        for shm in self.shared_memory_blocks.values():
+            try:
+                shm.close()
+            except Exception as e:
+                logger.warning(f"Error closing shared memory in worker {self.worker_id}: {e}")
+        self.shared_memory_blocks.clear()
 
 
 class MCTS:
@@ -325,7 +337,18 @@ class SearchWorker(Process):
         self.shared_memory_config = shared_memory_config
 
     def run(self):
-        """Main loop: get task, run MCTS, put result."""
+        """The main loop for the worker process."""
+        logger.info(f"WORKER {self.worker_id}: Starting main loop.")
+        # Perform necessary one-time initializations for this process
+        # This is where you would initialize things that are not pickleable
+        # if they were in the __init__ method.
+
+        profiler = None
+        if self.worker_id == 0:
+            print("INFO: Profiler enabled for worker 0.")
+            profiler = cProfile.Profile()
+            profiler.enable()
+
         evaluator = RemoteEvaluator(
             self.worker_id, self.request_q, self.response_q, self.shared_memory_config
         )
@@ -342,6 +365,7 @@ class SearchWorker(Process):
                 policy = mcts_instance.run_search(board, task.num_simulations)
                 result = SearchResult(fen=task.fen, policy=policy)
                 self.result_q.put(result)
+                logger.info(f"WORKER {self.worker_id}: Finished search for FEN {task.fen} and sent result.")
             except Exception as e:
                 logger.error(
                     f"Error in worker {self.worker_id} for FEN {task.fen}: {e}",
@@ -349,3 +373,12 @@ class SearchWorker(Process):
                 )
                 result = SearchResult(fen=task.fen, policy={}, error=str(e))
                 self.result_q.put(result)
+
+        if profiler:
+            profiler.disable()
+            stats_file = "worker_0_profile.prof"
+            profiler.dump_stats(stats_file)
+            print(f"INFO: Worker 0 profiling data saved to '{stats_file}'")
+
+        evaluator.cleanup()
+        logger.info(f"Worker {self.worker_id} shutting down cleanly.")
