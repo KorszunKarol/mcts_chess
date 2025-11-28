@@ -1,6 +1,6 @@
 from multiprocessing import Process, Queue
 from multiprocessing.shared_memory import SharedMemory
-from typing import Dict, Optional, Protocol, TYPE_CHECKING
+from typing import Dict, Optional, Protocol, TYPE_CHECKING, List
 import chess
 import numpy as np
 import logging
@@ -9,6 +9,7 @@ import threading
 import time
 import cProfile
 import pstats
+import queue
 
 from node import MCTSNode
 from src.encoder import Encoder
@@ -34,7 +35,9 @@ class SearchResult:
 
     fen: str
     policy: Dict[chess.Move, float]
+    q_value: Optional[float] = None
     error: Optional[str] = None
+    worker_id: Optional[int] = None
 
 
 class Evaluator(Protocol):
@@ -58,10 +61,12 @@ class RemoteEvaluator:
         request_q: Queue,
         response_q: Queue,
         shared_memory_config: Optional["SharedMemoryConfig"] = None,
+        total_workers: int = 1,
     ):
         self.worker_id = worker_id
         self.request_q = request_q
         self.response_q = response_q
+        self.total_workers = total_workers
         logger.info(f"WORKER {worker_id} RemoteEvaluator received response queue {id(response_q)}")
         self.encoder = Encoder()
         self.shared_memory_config = shared_memory_config
@@ -71,19 +76,36 @@ class RemoteEvaluator:
         self.output_arrays: Dict[str, np.ndarray] = {}
         self.buffer_lock = threading.Lock()
         self.next_buffer_index = 0
+        self.worker_buffer_names: List[str] = []
+        self.worker_buffer_indices: List[int] = []
 
         if self.shared_memory_config:
             self._setup_shared_memory()
 
     def _setup_shared_memory(self):
-        """Attach to existing shared memory blocks created by the controller."""
+        """Attach to existing shared memory blocks and partition them per worker."""
         logger.info(
-            f"Worker {self.worker_id}: Attaching to {len(self.shared_memory_config.buffer_names)} shared memory blocks..."
+            f"Worker {self.worker_id}: Attaching to {len(self.shared_memory_config.buffer_names)} total shared memory blocks..."
         )
 
-        for buffer_name in self.shared_memory_config.buffer_names:
-            try:
+        all_buffers = self.shared_memory_config.buffer_names
+        base_per_worker = len(all_buffers) // self.total_workers
+        remainder = len(all_buffers) % self.total_workers
 
+        start_index = self.worker_id * base_per_worker + min(self.worker_id, remainder)
+        num_buffers_for_worker = base_per_worker + (1 if self.worker_id < remainder else 0)
+        end_index = start_index + num_buffers_for_worker
+
+        if num_buffers_for_worker == 0:
+            raise RuntimeError(f"Worker {self.worker_id} assigned 0 buffers. Increase `buffer_count` or decrease `num_workers`.")
+
+        self.worker_buffer_names = all_buffers[start_index:end_index]
+        self.worker_buffer_indices = list(range(start_index, end_index))
+
+        logger.info(f"Worker {self.worker_id} assigned {len(self.worker_buffer_names)} private buffers (global indices {start_index}-{end_index-1}).")
+
+        for buffer_name in self.worker_buffer_names:
+            try:
                 shm = SharedMemory(name=buffer_name)
                 self.shared_memory_blocks[buffer_name] = shm
 
@@ -113,25 +135,24 @@ class RemoteEvaluator:
 
     def _allocate_buffer(self) -> int:
         """
-        Allocate a buffer for this evaluation request.
-        Uses a simple round-robin allocation strategy.
+        Allocate a buffer from this worker's private pool.
+        Uses a simple round-robin allocation strategy within its own slice.
         """
         with self.buffer_lock:
-            buffer_index = self.next_buffer_index % len(
-                self.shared_memory_config.buffer_names
-            )
+            local_buffer_idx = self.next_buffer_index % len(self.worker_buffer_names)
             self.next_buffer_index += 1
-            return buffer_index
+            global_buffer_idx = self.worker_buffer_indices[local_buffer_idx]
+            return global_buffer_idx
 
     def _write_input_to_buffer(self, buffer_index: int, encoded_state: np.ndarray):
         """Write input data to a shared memory buffer."""
-        buffer_name = self.shared_memory_config.buffer_names[buffer_index]
+        buffer_name = self.worker_buffer_names[buffer_index % len(self.worker_buffer_names)]
         input_array = self.input_arrays[buffer_name]
         input_array[:] = encoded_state
 
     def _read_output_from_buffer(self, buffer_index: int) -> tuple[float, np.ndarray]:
         """Read output data from a shared memory buffer."""
-        buffer_name = self.shared_memory_config.buffer_names[buffer_index]
+        buffer_name = self.worker_buffer_names[buffer_index % len(self.worker_buffer_names)]
         output_array = self.output_arrays[buffer_name]
 
         # The model's value head outputs a 3-element vector.
@@ -146,52 +167,57 @@ class RemoteEvaluator:
 
         return value, policy_logits
 
-    def evaluate(self, board: chess.Board) -> tuple[float, Dict[chess.Move, float]]:
+    def queue_evaluation(self, board: chess.Board) -> Dict:
         """
-        Encodes the board, sends it for evaluation via a dedicated buffer,
-        and blocks waiting ONLY for its specific response. This method is
-        now guaranteed to be race-condition-free.
+        Queues an evaluation request and returns a handle without blocking.
+        The handle contains the information needed to retrieve the result later.
         """
         if not self.shared_memory_config:
-            raise RuntimeError(
-                "RemoteEvaluator requires shared memory to be configured for performance and stability."
-            )
+            raise RuntimeError("RemoteEvaluator requires shared memory.")
 
-        # 1. Prepare the data
         encoded_state = self.encoder.encode(board)
-
-        # 2. Allocate a unique buffer for this worker for this request.
-        #    This ensures no other worker can interfere with its data.
         buffer_index = self._allocate_buffer()
         self._write_input_to_buffer(buffer_index, encoded_state)
 
-        # 3. Create the lightweight request message
         request = {"worker_id": self.worker_id, "buffer_index": buffer_index}
-
-        # 4. Send the request to the central manager
-        logger.info(f"[Worker {self.worker_id}] > Sending request for buffer {buffer_index}.")
         self.request_q.put(request)
 
-        # 5. Block and wait on this worker's DEDICATED response queue.
-        #    There is no loop. There is no checking worker_id. The architecture
-        #    guarantees the message on this queue is for this worker.
-        logger.info(f"[Worker {self.worker_id}] ? Waiting for response...")
-        response = self.response_q.get()  # This is the only 'get' call.
-        logger.info(
-            f"[Worker {self.worker_id}] < Received response for buffer {response.get('buffer_index')}."
-        )
+        return {"buffer_index": buffer_index, "fen": board.fen()}
 
-        # 6. Check for errors from the manager
-        if "error" in response:
-            raise RuntimeError(f"Evaluation failed in manager: {response['error']}")
+    def collect_evaluation_batch(self, handles: List[Dict]) -> List[tuple]:
+        """
+        Collects a batch of evaluation results corresponding to the provided handles.
+        """
+        results_map = {}
+        for _ in range(len(handles)):
+            try:
+                response = self.response_q.get(timeout=300.0)
+                if "error" in response:
+                    raise RuntimeError(f"Evaluation failed in manager: {response['error']}")
 
-        # 7. Process the results from the buffer specified in the response
-        value, policy_logits = self._read_output_from_buffer(
-            response["buffer_index"]
-        )
-        policy = self._decode_policy(policy_logits, board)
+                buffer_idx = response["buffer_index"]
+                value, policy_logits = self._read_output_from_buffer(buffer_idx)
+                results_map[buffer_idx] = (value, policy_logits)
+            except queue.Empty:
+                raise RuntimeError(f"Worker {self.worker_id} timed out waiting for evaluation response.")
 
-        return value, policy
+        ordered_results = []
+        for handle in handles:
+            buffer_idx = handle["buffer_index"]
+            board = chess.Board(handle["fen"])
+            value, policy_logits = results_map[buffer_idx]
+            policy = self._decode_policy(policy_logits, board)
+            ordered_results.append((value, policy))
+
+        return ordered_results
+
+    def evaluate(self, board: chess.Board) -> tuple[float, Dict[chess.Move, float]]:
+        """
+        Legacy synchronous evaluation. For compatibility if needed, but the new
+        pattern is queue_evaluation followed by collect_evaluation_batch.
+        """
+        handle = self.queue_evaluation(board)
+        return self.collect_evaluation_batch([handle])[0]
 
     def _decode_policy(
         self, logits: np.ndarray, board: chess.Board
@@ -256,37 +282,88 @@ class MCTS:
         self.c_puct = c_puct
         self.n_scl = n_scl
 
+        num_private_buffers = 0
+        if hasattr(self.evaluator, 'worker_buffer_names'):
+             num_private_buffers = len(self.evaluator.worker_buffer_names)
+
+        self.local_batch_size = min(8, num_private_buffers)
+        if self.local_batch_size == 0:
+            logger.warning(f"MCTS worker has {num_private_buffers} private buffers, pipelining will be disabled.")
+
     def run_search(
         self, board: chess.Board, num_simulations: int
-    ) -> Dict[chess.Move, float]:
+    ) -> tuple[Dict[chess.Move, float], float]:
         """
-        Performs the MCTS search for a given board state.
+        Performs MCTS search using worker-side batching to pipeline evaluations.
+        Returns the final policy and the root node's Q-value.
         """
         root = MCTSNode(depth=0)
 
-        for _ in range(num_simulations):
-            node = root
-            search_board = board.copy()
-
-            while not node.is_leaf():
-
-                child_data = node.select_child(self.c_puct, self.n_scl)
-                if child_data is None:
-
-                    break
-                move, node = child_data
-                search_board.push(move)
-
-            value = 0.0
-            if not search_board.is_game_over(claim_draw=True):
+        if not hasattr(self.evaluator, 'queue_evaluation') or not hasattr(self.evaluator, 'collect_evaluation_batch') or self.local_batch_size == 0:
+            logger.warning("Falling back to synchronous (non-pipelined) search.")
+            for _ in range(num_simulations):
+                node = root
+                search_board = board.copy()
+                while not node.is_leaf():
+                    move, node = node.select_child(self.c_puct, self.n_scl)
+                    search_board.push(move)
                 value, policy = self.evaluator.evaluate(search_board)
                 node.expand(policy)
-            else:
-                value = self._get_game_outcome(search_board)
+                node.update(value)
+            policy = self._calculate_final_policy(root)
+            q_value = root.q_value()
+            return policy, q_value
 
-            node.update(value)
+        sims_processed = 0
+        while sims_processed < num_simulations:
+            pending_evaluations = []
 
-        return self._calculate_final_policy(root)
+            for _ in range(min(self.local_batch_size, num_simulations - sims_processed)):
+                node = root
+                search_board = board.copy()
+
+                while not node.is_leaf():
+                    child_data = node.select_child(self.c_puct, self.n_scl)
+                    if child_data is None:
+                        break
+                    move, node = child_data
+                    search_board.push(move)
+
+                if search_board.is_game_over(claim_draw=True):
+                    value = self._get_game_outcome(search_board)
+                    node.update(value)
+                    sims_processed += 1
+                else:
+                    handle = self.evaluator.queue_evaluation(search_board)
+                    pending_evaluations.append({'handle': handle, 'node': node})
+
+            if not pending_evaluations:
+                if sims_processed >= num_simulations:
+                    break
+                else:
+                    continue
+
+            try:
+                results = self.evaluator.collect_evaluation_batch(
+                    [p['handle'] for p in pending_evaluations]
+                )
+
+                for pending_item, result_data in zip(pending_evaluations, results):
+                    node = pending_item['node']
+                    value, policy = result_data
+
+                    if node.visit_count == 0:
+                        node.expand(policy)
+
+                    node.update(value)
+                    sims_processed += 1
+            except RuntimeError as e:
+                logger.error(f"Worker {self.evaluator.worker_id} failed during batch collection: {e}")
+                sims_processed += len(pending_evaluations)
+
+        policy = self._calculate_final_policy(root)
+        q_value = root.q_value()
+        return policy, q_value
 
     def _get_game_outcome(self, board: chess.Board) -> float:
         """Determines the game outcome from the perspective of the current player."""
@@ -295,16 +372,16 @@ class MCTS:
         return 0.0
 
     def _calculate_final_policy(self, root: MCTSNode) -> Dict[chess.Move, float]:
-        """Calculates policy from visit counts."""
+        """
+        Calculates the final policy from the raw visit counts of the root's children.
+        Instead of probabilities, this returns the integer visit counts to preserve
+        full resolution for aggregation in the controller.
+        """
         if root.is_leaf() or root.visit_count == 0:
             return {}
 
-        total_visits = sum(child.visit_count for child in root.children.values())
-        if total_visits == 0:
-            return {}
-
         return {
-            move: child.visit_count / total_visits
+            move: child.visit_count
             for move, child in root.children.items()
         }
 
@@ -322,6 +399,7 @@ class SearchWorker(Process):
         result_q: Queue,
         request_q: Queue,
         response_q: Queue,
+        total_workers: int,
         c_puct: float = 1.0,
         n_scl: int = 1000,
         shared_memory_config: Optional["SharedMemoryConfig"] = None,
@@ -332,6 +410,7 @@ class SearchWorker(Process):
         self.result_q = result_q
         self.request_q = request_q
         self.response_q = response_q
+        self.total_workers = total_workers
         self.c_puct = c_puct
         self.n_scl = n_scl
         self.shared_memory_config = shared_memory_config
@@ -339,10 +418,6 @@ class SearchWorker(Process):
     def run(self):
         """The main loop for the worker process."""
         logger.info(f"WORKER {self.worker_id}: Starting main loop.")
-        # Perform necessary one-time initializations for this process
-        # This is where you would initialize things that are not pickleable
-        # if they were in the __init__ method.
-
         profiler = None
         if self.worker_id == 0:
             print("INFO: Profiler enabled for worker 0.")
@@ -350,7 +425,8 @@ class SearchWorker(Process):
             profiler.enable()
 
         evaluator = RemoteEvaluator(
-            self.worker_id, self.request_q, self.response_q, self.shared_memory_config
+            self.worker_id, self.request_q, self.response_q, self.shared_memory_config,
+            total_workers=self.total_workers
         )
         mcts_instance = MCTS(evaluator, self.c_puct, self.n_scl)
 
@@ -362,8 +438,8 @@ class SearchWorker(Process):
 
             try:
                 board = chess.Board(task.fen)
-                policy = mcts_instance.run_search(board, task.num_simulations)
-                result = SearchResult(fen=task.fen, policy=policy)
+                policy, q_value = mcts_instance.run_search(board, task.num_simulations)
+                result = SearchResult(fen=task.fen, policy=policy, q_value=q_value, worker_id=self.worker_id)
                 self.result_q.put(result)
                 logger.info(f"WORKER {self.worker_id}: Finished search for FEN {task.fen} and sent result.")
             except Exception as e:
@@ -371,7 +447,7 @@ class SearchWorker(Process):
                     f"Error in worker {self.worker_id} for FEN {task.fen}: {e}",
                     exc_info=True,
                 )
-                result = SearchResult(fen=task.fen, policy={}, error=str(e))
+                result = SearchResult(fen=task.fen, policy={}, error=str(e), worker_id=self.worker_id)
                 self.result_q.put(result)
 
         if profiler:

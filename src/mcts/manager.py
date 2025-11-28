@@ -53,7 +53,7 @@ class EvaluationManager(Process):
     def __init__(
         self,
         request_q: Queue,
-        response_qs: List[Queue],
+        response_q: Queue,
         weights_path: str,
         batch_size: int = 32,
         max_wait_time_ms: float = 10.0,
@@ -66,7 +66,7 @@ class EvaluationManager(Process):
 
         Args:
             request_q: Queue for receiving evaluation requests (buffer indices).
-            response_qs: List of queues for sending evaluation results (buffer indices) to different workers.
+            response_q: Queue for sending evaluation results (buffer indices).
             weights_path: Path to the model's weights file.
             batch_size: The maximum number of requests to batch together.
             max_wait_time_ms: Max time to wait for more requests before running
@@ -77,7 +77,7 @@ class EvaluationManager(Process):
         """
         super().__init__()
         self.request_q = request_q
-        self.response_qs = response_qs
+        self.response_q = response_q
         self.weights_path = weights_path
         self.batch_size = batch_size
         self.max_wait_time = max_wait_time_ms / 1000.0
@@ -261,7 +261,7 @@ class EvaluationManager(Process):
                 # Send error responses
                 for req in requests_batch:
                     worker_id = req["worker_id"]
-                    self.response_qs[worker_id].put(
+                    self.response_q.put(
                         {
                             "worker_id": req["worker_id"],
                             "buffer_index": req.get("buffer_index") if req else None,
@@ -278,60 +278,55 @@ class EvaluationManager(Process):
     def _process_batch_with_shared_memory(
         self, requests_batch: List[EvaluationRequest]
     ):
-        """Process a batch of requests using shared memory for data transfer."""
-        batch_inputs = [
-            self._get_input_from_buffer(
-                self.shared_memory_config.buffer_names[req["buffer_index"]]
-            )
-            for req in requests_batch
-        ]
-
-        if not batch_inputs:
+        """
+        Process a batch of requests using shared memory for data transfer.
+        Pads the batch to a fixed size to prevent XLA recompilation.
+        """
+        if not requests_batch:
             return
 
-        input_tensor = np.array(batch_inputs)
-        logger.debug(f"Manager processing batch of {len(requests_batch)}.")
+        batch_len = len(requests_batch)
+        input_shape = self.shared_memory_config.input_shape
+
+        # --- MODIFICATION: Pad batch to a fixed size to prevent XLA recompilation ---
+        fixed_batch_size = self.batch_size
+        padded_input_batch = np.zeros((fixed_batch_size, *input_shape), dtype=np.float32)
+
+        for i, request in enumerate(requests_batch):
+            buffer_name = self.shared_memory_config.buffer_names[
+                request["buffer_index"]
+            ]
+            padded_input_batch[i] = self._get_input_from_buffer(buffer_name)
 
         try:
-            value_probs_batch, policy_logits_batch = self.model.predict(
-                input_tensor, verbose=0
-            )
+            # Predict on the full, fixed-size, padded batch
+            value_probs, policy_logits = self.model.predict(padded_input_batch, batch_size=fixed_batch_size)
 
-            for i, req in enumerate(requests_batch):
-                buffer_name = self.shared_memory_config.buffer_names[req["buffer_index"]]
-
-                # Pass the raw 3-element array directly
+            # Only process the results for the valid, un-padded part of the batch
+            for i, request in enumerate(requests_batch):
+                buffer_name = self.shared_memory_config.buffer_names[
+                    request["buffer_index"]
+                ]
+                # Use the i-th result corresponding to the i-th input
                 self._write_output_to_buffer(
-                    buffer_name, value_probs_batch[i], policy_logits_batch[i]
+                    buffer_name, value_probs[i], policy_logits[i]
                 )
 
-                worker_id = req["worker_id"]
-                response = {"buffer_index": req["buffer_index"], "worker_id": worker_id}
+                worker_id = request["worker_id"]
+                response = {"buffer_index": request["buffer_index"], "worker_id": worker_id}
 
-                try:
-                    if worker_id < len(self.response_qs):
-                        response_q = self.response_qs[worker_id]
-                        logger.info(
-                            f"MANAGER: Sending response for buffer {req['buffer_index']} to worker {worker_id} on queue {id(response_q)}"
-                        )
-                        response_q.put(response)
-                    else:
-                        logger.error(f"Invalid worker_id {worker_id} received, cannot send response.")
-                except Exception as e:
-                    logger.error(
-                        f"MANAGER: Failed to send response to worker {worker_id}: {e}"
-                    )
+                logger.info(f"[Manager] PUTTING response for Worker {worker_id} onto central queue.")
+                self.response_q.put(response)
 
         except Exception as e:
-            logger.error(f"Error during model prediction: {e}", exc_info=True)
-            for req in requests_batch:
-                worker_id = req["worker_id"]
-                response = {
-                    "worker_id": worker_id,
-                    "buffer_index": req["buffer_index"],
+            logger.error(f"Error during model inference: {e}", exc_info=True)
+            for request in requests_batch:
+                error_response = {
+                    "buffer_index": request["buffer_index"],
+                    "worker_id": request["worker_id"],
                     "error": str(e),
                 }
-                self.response_qs[worker_id].put(response)
+                self.response_q.put(error_response)
 
     def _process_batch_with_queues(self, requests_batch: List[EvaluationRequest]):
         """Process a batch of requests using queues for data transfer (fallback)."""
@@ -347,21 +342,28 @@ class EvaluationManager(Process):
                 input_tensor, verbose=0
             )
 
+            # Send responses back to the workers
             for i, req in enumerate(requests_batch):
                 worker_id = req["worker_id"]
+                value = value_probs_batch[i]
+                policy = policy_logits_batch[i]
 
-                # Send the raw 3-element array in the queue under the 'value' key
-                # to match what the worker's queue-based logic expects.
+                # The response must contain the worker_id for the router to use
                 response = {
                     "worker_id": worker_id,
-                    "value": value_probs_batch[i],
-                    "policy_logits": policy_logits_batch[i],
+                    "value": value,
+                    "policy_logits": policy,
                 }
-                self.response_qs[worker_id].put(response)
+                logger.info(f"[Manager] PUTTING response for Worker {worker_id} onto central queue.")
+                self.response_q.put(response)
 
         except Exception as e:
             logger.error(f"Error during model prediction (queues): {e}", exc_info=True)
             for req in requests_batch:
                 worker_id = req["worker_id"]
                 response = {"worker_id": worker_id, "error": str(e)}
-                self.response_qs[worker_id].put(response)
+                self.response_q.put(response)
+
+    def cleanup(self):
+        """Clean up shared memory handles before manager exit."""
+        self._cleanup_shared_memory()

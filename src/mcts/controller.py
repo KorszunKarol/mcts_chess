@@ -14,11 +14,21 @@ from typing import Dict, List, Optional, Tuple, Any
 import numpy as np
 import time
 from dataclasses import dataclass, field
+import queue
+import threading
 
 from src.mcts.manager import EvaluationManager
 from src.mcts.worker import SearchWorker, SearchTask, SearchResult
 
 logger = logging.getLogger(__name__)
+
+# --- MODIFICATION: Create a new result class for the final aggregated data ---
+@dataclass
+class MCTSResult:
+    """Represents the final, aggregated result of an MCTS search."""
+    policy: Dict[Any, float]
+    q_value: float
+    error: Optional[str] = None
 
 # Configuration constants
 DEFAULT_BUFFER_COUNT = 256
@@ -101,6 +111,7 @@ class MCTSController:
         self.task_q: Optional[Queue] = None
         self.result_q: Optional[Queue] = None
         self.request_q: Optional[Queue] = None
+        self.manager_response_q: Optional[Queue] = None
         self.response_qs: List[Queue] = []
 
         # Process management
@@ -127,6 +138,7 @@ class MCTSController:
         self.task_q = Queue()
         self.result_q = Queue()
         self.request_q = Queue()
+        self.manager_response_q = Queue()
         self.response_qs = [Queue() for _ in range(self.num_workers)]
         logger.info(f"Created {len(self.response_qs)} dedicated response queues.")
 
@@ -189,11 +201,17 @@ class MCTSController:
             # Setup IPC
             self._setup_ipc()
 
+            # Start the response router thread
+            self.router_thread = threading.Thread(
+                target=self._response_router_thread, daemon=True
+            )
+            self.router_thread.start()
+
             # Start EvaluationManager
             logger.info("Starting EvaluationManager process...")
             self.evaluation_manager = EvaluationManager(
                 request_q=self.request_q,
-                response_qs=self.response_qs,
+                response_q=self.manager_response_q,
                 weights_path=self.model_weights_path,
                 batch_size=self.batch_size,
                 max_wait_time_ms=self.max_wait_time_ms,
@@ -214,8 +232,9 @@ class MCTSController:
                     result_q=self.result_q,
                     request_q=self.request_q,
                     response_q=response_q,
-                    c_puct=1.0,
-                    n_scl=1000,
+                    total_workers=self.num_workers,
+                    c_puct=4.0,
+                    n_scl=100_000,
                     shared_memory_config=self.shared_memory_config,
                 )
                 worker.start()
@@ -231,95 +250,144 @@ class MCTSController:
             self.shutdown()
             raise
 
-    def run_search(self, fen: str, num_simulations: int) -> SearchResult:
+    def run_search(self, fen: str, num_simulations: int) -> MCTSResult:
         """
-        Run an MCTS search for the given position.
+        Run an MCTS search by distributing simulations across all workers.
+
+        This implements a parallel search where each worker runs a fraction of
+        the total simulations on an independent tree. The results (visit counts and q_values)
+        are then aggregated to form the final policy and value estimate.
 
         Args:
             fen: Chess position in FEN notation
-            num_simulations: Number of MCTS simulations to run
+            num_simulations: Total number of MCTS simulations to run across all workers.
 
         Returns:
-            SearchResult containing the policy and any errors
+            A single MCTSResult containing the aggregated policy and Q-value.
         """
         if not self._is_started:
-            raise RuntimeError(
-                "MCTS Controller must be started before running searches"
-            )
+            raise RuntimeError("MCTS Controller must be started before running searches")
 
-        # Create and submit search task
-        task = SearchTask(fen=fen, num_simulations=num_simulations)
-        logger.debug(
-            f"Submitting search task: {fen} with {num_simulations} simulations"
+        if self.num_workers == 0:
+            logger.warning("run_search called with zero workers.")
+            return MCTSResult(policy={}, q_value=0.0, error="No workers available.")
+
+        # --- Distribute work evenly among all workers ---
+        sims_per_worker = max(1, num_simulations // self.num_workers)
+        actual_total_sims = sims_per_worker * self.num_workers
+
+        logger.info(
+            f"Dispatching {self.num_workers} tasks, {sims_per_worker} simulations each (total: {actual_total_sims})."
         )
 
-        self.task_q.put(task)
+        for _ in range(self.num_workers):
+            task = SearchTask(fen=fen, num_simulations=sims_per_worker)
+            self.task_q.put(task)
 
-        # Wait for result
-        try:
-            result = self.result_q.get()
-            logger.debug(f"Received search result for {fen}")
-            return result
-        except Exception as e:
-            logger.error(f"Failed to get search result: {e}")
-            return SearchResult(fen=fen, policy={}, error=str(e))
+        # --- Collect and aggregate results from all workers ---
+        aggregated_policy: Dict[Any, float] = {}
+        aggregated_q_value: float = 0.0
+        num_valid_results: int = 0
+        errors: List[str] = []
+
+        for i in range(self.num_workers):
+            try:
+                # Use a generous timeout, as this worker might be waiting for others.
+                result: SearchResult = self.result_q.get(timeout=600.0)
+
+                if result.error:
+                    errors.append(f"Worker {result.worker_id} Error: {result.error}")
+                    continue
+
+                # --- MODIFICATION: Aggregate raw visit counts and q_values ---
+                num_valid_results += 1
+                if result.q_value is not None:
+                    aggregated_q_value += result.q_value
+
+                for move, visit_count in result.policy.items():
+                    aggregated_policy[move] = aggregated_policy.get(move, 0.0) + visit_count
+
+            except queue.Empty:
+                error_msg = f"Timeout: Only received {i}/{self.num_workers} results."
+                logger.error(error_msg)
+                errors.append(error_msg)
+                break  # Stop waiting if one worker fails to report back
+            except Exception as e:
+                errors.append(f"An unexpected error occurred while collecting results: {e}")
+
+        # --- Finalize the aggregated policy and value ---
+        if num_valid_results == 0:
+            final_error = " | ".join(errors) if errors else "Policy and value aggregation failed: no results."
+            return MCTSResult(policy={}, q_value=0.0, error=final_error)
+
+        final_q_value = aggregated_q_value / num_valid_results if num_valid_results > 0 else 0.0
+
+        total_visits = sum(aggregated_policy.values())
+        if total_visits > 0:
+            final_policy = {move: visits / total_visits for move, visits in aggregated_policy.items()}
+        else:
+            final_policy = {}
+
+        final_error = " | ".join(errors) if errors else None
+        return MCTSResult(policy=final_policy, q_value=final_q_value, error=final_error)
 
     def shutdown(self) -> None:
         """
-        Gracefully shutdown the MCTS engine.
-
-        This method:
-        1. Terminates all worker processes
-        2. Terminates the EvaluationManager process
-        3. Cleans up shared memory blocks
+        Cleanly shut down all processes and shared memory.
         """
         if not self._is_started:
-            logger.info("MCTS Controller is not started, nothing to shutdown")
             return
 
         logger.info("Shutting down MCTS Controller...")
 
-        # Terminate worker processes by sending sentinel value
-        if self.task_q:
-            for _ in self.workers:
-                try:
-                    self.task_q.put(None)
-                except Exception as e:
-                    logger.warning(f"Could not send sentinel to task queue: {e}")
-
+        # Terminate SearchWorker processes
         for worker in self.workers:
             if worker.is_alive():
-                worker.join(timeout=5.0)
-                if worker.is_alive():
-                    logger.warning(
-                        f"Worker {worker.pid} did not terminate gracefully, forcing termination."
-                    )
-                    worker.terminate()
+                worker.terminate()
+                worker.join(timeout=2.0)
+        self.workers.clear()
 
         # Signal EvaluationManager to shut down
         if self.request_q:
             try:
-                # Add a sentinel value to unblock the manager's queue
                 self.request_q.put(None)
             except Exception as e:
-                logger.error(f"Error putting sentinel on request_q: {e}")
+                logger.warning(f"Failed to send shutdown signal to manager: {e}")
 
-        # Wait for EvaluationManager to terminate
+        # Signal the Response Router thread to shut down
+        if self.manager_response_q:
+            try:
+                self.manager_response_q.put(None)
+            except Exception as e:
+                logger.warning(f"Failed to send shutdown signal to router: {e}")
+
+        # Join EvaluationManager
         if self.evaluation_manager and self.evaluation_manager.is_alive():
             logger.debug("Waiting for EvaluationManager to terminate...")
-            self.evaluation_manager.join(timeout=5)
-            if self.evaluation_manager.is_alive():
-                logger.warning("EvaluationManager did not terminate, forcing.")
-                self.evaluation_manager.terminate()
+            self.evaluation_manager.join(timeout=5.0)
 
-        # Clean up shared memory
+        # Join the router thread
+        if hasattr(self, 'router_thread') and self.router_thread.is_alive():
+            logger.debug("Waiting for Response Router thread to terminate...")
+            self.router_thread.join(timeout=2.0)
+
+        # Cleanup IPC resources
         self._cleanup_shared_memory()
 
+        if self.task_q: self.task_q.close()
+        if self.result_q: self.result_q.close()
+        if self.request_q: self.request_q.close()
+        if self.manager_response_q: self.manager_response_q.close()
+        for q in self.response_qs:
+            q.close()
+
         self._is_started = False
-        logger.info("MCTS Controller shutdown complete")
+        logger.info("MCTS Controller shut down successfully.")
 
     def _cleanup_shared_memory(self) -> None:
-        """Clean up all shared memory blocks."""
+        """
+        Close and unlink all shared memory blocks.
+        """
         logger.info(
             f"Cleaning up {len(self.shared_memory_blocks)} shared memory blocks..."
         )
@@ -327,16 +395,45 @@ class MCTSController:
         for shm in self.shared_memory_blocks:
             try:
                 shm.close()
-                shm.unlink()
+                shm.unlink()  # Free up the memory
+            except FileNotFoundError:
+                pass  # It might have been unlinked already
             except Exception as e:
-                logger.warning(f"Failed to cleanup shared memory {shm.name}: {e}")
-
+                logger.warning(f"Error cleaning up shared memory: {e}")
         self.shared_memory_blocks.clear()
         if self.shared_memory_config:
             self.shared_memory_config.buffer_names.clear()
 
+    def _response_router_thread(self):
+        """
+        Continuously pulls results from the manager's central response queue
+        and routes them to the correct worker's dedicated response queue.
+        This is a daemon thread that runs in the background.
+        """
+        logger.info("[Router] Response router thread started.")
+        while True:
+            try:
+                # Block and wait for a response from the manager
+                response = self.manager_response_q.get()
+
+                # Sentinel value to terminate the thread
+                if response is None:
+                    logger.info("[Router] Shutdown signal received. Exiting.")
+                    break
+
+                # Get the destination worker's ID
+                worker_id = response.get("worker_id")
+                if worker_id is not None and 0 <= worker_id < self.num_workers:
+                    # Put the response onto that specific worker's queue
+                    self.response_qs[worker_id].put(response)
+                else:
+                    logger.warning(f"[Router] Received response with invalid worker_id: {response}")
+
+            except Exception as e:
+                logger.error(f"[Router] Error in response router thread: {e}", exc_info=True)
+                break
+
     def __enter__(self):
-        """Context manager entry."""
         self.start()
         return self
 

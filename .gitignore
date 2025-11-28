@@ -149,6 +149,7 @@ logs/
 # IDE / Editor specific
 .vscode/
 .idea/
+.cursor/
 *.swp
 *.swo
 

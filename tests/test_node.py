@@ -13,7 +13,7 @@ import math
 from unittest.mock import patch
 
 # Assuming the MCTSNode class is in this path
-from src.mcts.node import MCTSNode
+from node import MCTSNode
 
 
 class TestMCTSNode(unittest.TestCase):
