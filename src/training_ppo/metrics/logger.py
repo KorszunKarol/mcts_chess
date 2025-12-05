@@ -354,11 +354,16 @@ class TalMetricsLogger:
         elapsed = time.time() - self.start_time
         sps = self.total_timesteps / max(1, elapsed)
         log_dict["perf/steps_per_second"] = sps
-        
-        # GPU memory tracking
-        vram_usage = self._get_vram_usage()
-        if vram_usage is not None:
-            log_dict["perf/vram_gb"] = vram_usage
+
+        # GPU memory tracking (allocated vs reserved)
+        vram_stats = self._get_vram_stats()
+        if vram_stats is not None:
+            alloc_gb, reserved_gb, total_gb = vram_stats
+            log_dict["perf/vram_active_gb"] = alloc_gb
+            log_dict["perf/vram_reserved_gb"] = reserved_gb
+            log_dict["perf/vram_reserved_pct"] = (
+                reserved_gb / total_gb * 100 if total_gb > 0 else 0.0
+            )
         
         # Log to WandB
         if self.use_wandb and self.wandb is not None:
@@ -367,13 +372,21 @@ class TalMetricsLogger:
         # Console logging
         self._log_to_console(iteration, log_dict)
     
-    def _get_vram_usage(self) -> Optional[float]:
-        """Get current GPU VRAM usage in GB."""
+    def _get_vram_stats(self) -> Optional[tuple]:
+        """
+        Get current GPU VRAM stats in GB.
+        
+        Returns:
+            (allocated_gb, reserved_gb, total_gb) or None if CUDA unavailable.
+        """
         try:
             if torch.cuda.is_available():
-                # Get allocated memory in bytes, convert to GB
-                allocated = torch.cuda.memory_allocated() / (1024 ** 3)
-                return allocated
+                device = torch.cuda.current_device()
+                props = torch.cuda.get_device_properties(device)
+                total_gb = props.total_memory / (1024 ** 3)
+                allocated = torch.cuda.memory_allocated(device) / (1024 ** 3)
+                reserved = torch.cuda.memory_reserved(device) / (1024 ** 3)
+                return allocated, reserved, total_gb
         except Exception:
             pass
         return None
@@ -426,13 +439,14 @@ class TalMetricsLogger:
         game_len = metrics.get("env/game_length_mean", None)
         
         if win_rate is not None:
-            vram = metrics.get("perf/vram_gb", 0)
+            vram_alloc = metrics.get("perf/vram_active_gb", 0)
+            vram_res = metrics.get("perf/vram_reserved_gb", 0)
             logger.info(
                 f"         ENV | "
                 f"WinRate: {win_rate:.2%} | "
                 f"GameLen: {game_len:.0f} | "
-                f"VRAM: {vram:.2f}GB"
-            )
+                f"VRAM: alloc {vram_alloc:.2f}GB / res {vram_res:.2f}GB"
+        )
     
     def log_model_checkpoint(
         self,

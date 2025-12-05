@@ -1,0 +1,103 @@
+# Tal-RL PPO Training Configuration
+# 
+# This configuration trains an agent to exploit cognitive asymmetry
+# in chess: creating positions that are confusing for opponents while
+# maintaining sound play.
+#
+# Key hyperparameters:
+#   - env.num_envs: Number of parallel games (scale based on VRAM)
+#   - mcts.num_simulations: MCTS depth (50 is fast, 200 is more accurate)
+#   - reward.alpha: Weight for survival mass (opponent confusion)
+#   - reward.beta: Weight for value gap (deception)
+
+# =============================================================================
+# Environment Configuration
+# =============================================================================
+env:
+  num_envs: 64            # Number of parallel games (further reduced for 8GB)
+  max_episode_steps: 512   # Max moves per game before truncation
+
+# =============================================================================
+# Agent Model
+# =============================================================================
+agent:
+  weights_path: "saved_models/tal_v1.pt"
+  input_channels: 34
+  action_space_size: 4672
+
+# =============================================================================
+# Victim Model (Simulated ~1400 Elo Opponent)
+# =============================================================================
+victim:
+  temperature: 1.5         # Higher = more random/weaker play
+  share_weights: true      # Use same architecture as agent
+
+# =============================================================================
+# MCTS Configuration (System 2 Thinking)
+# =============================================================================
+mcts:
+  num_simulations: 5       # Further reduced to avoid OOM
+  max_num_considered_actions: 4  # Tighter pruning to save memory
+  discount: 1.0            # No discounting for chess
+  use_env_dynamics: true   # Use real chess rules
+
+# =============================================================================
+# Tal Reward (Cognitive Asymmetry)
+# =============================================================================
+reward:
+  alpha: 0.3               # Weight for survival mass penalty
+  beta: 0.2                # Weight for value gap bonus
+  delta_soundness: 0.15    # Soundness threshold
+  normalize_rewards: true  # Normalize for stability
+  reward_clip: 10.0        # Clip extreme rewards
+
+# =============================================================================
+# PPO Algorithm
+# =============================================================================
+ppo:
+  lr: 0.0003               # Learning rate (3e-4)
+  clip_range: 0.2          # PPO clip range
+  clip_range_vf: null      # Value function clip (null = no clipping)
+  entropy_coef: 0.01       # Entropy bonus coefficient
+  value_coef: 0.5          # Value loss coefficient
+  max_grad_norm: 0.5       # Gradient clipping
+  ppo_epochs: 4            # PPO epochs per update
+  minibatch_size: 64       # Minibatch size
+  num_steps: 32            # Shorter rollout to reduce peak memory
+  gamma: 0.99              # Discount factor
+  gae_lambda: 0.95         # GAE lambda
+  normalize_advantage: true
+
+# =============================================================================
+# Training Schedule
+# =============================================================================
+training:
+  total_timesteps: 10000000  # 10M timesteps
+  log_interval: 10           # Log every N iterations
+  save_interval: 100         # Checkpoint every N iterations
+  eval_interval: 50          # Evaluate every N iterations
+  checkpoint_dir: "checkpoints/ppo_tal"
+  wandb_project: "tal-rl"
+  wandb_entity: null         # Your WandB username/team
+  seed: 42
+  use_mixed_precision: true
+
+# =============================================================================
+# Scaling Guidelines
+# =============================================================================
+# 
+# For RTX 4090 (24GB VRAM):
+#   - Start with num_envs: 1024, scale up to 4096
+#   - Monitor GPU memory with nvidia-smi
+#   - If OOM, reduce num_envs or num_simulations
+#
+# Training Time Estimates (10M steps):
+#   - 4096 envs, 50 sims: ~8-12 hours
+#   - 1024 envs, 50 sims: ~24-36 hours
+#   - 256 envs, 50 sims: ~72+ hours
+#
+# Hyperparameter Tuning Priority:
+#   1. alpha, beta: Start small (0.1-0.3), increase if rewards too sparse
+#   2. entropy_coef: Increase if policy collapses, decrease if too random
+#   3. lr: Decrease if training unstable, increase if too slow
+

@@ -1,0 +1,42 @@
+# =============================================================================
+# QUICK TEST: MCTS vs MCTS + Coach Tal (~20-30 minutes)
+# =============================================================================
+# Minimal config to validate Coach Tal with MCTS in reasonable time.
+#
+# Run with:
+#   conda activate chess
+#   python scripts/evaluation/settings_arena.py \
+#       --config configs/arena_mcts_quick.yaml \
+#       --model saved_models/best_model_pytorch.pt \
+#       --games 2 --output results
+# =============================================================================
+
+positions:
+  # Just 4 diverse positions
+  - "r1bqkb1r/pppn1ppp/4pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 2 5"  # QGD
+  - "rnbqkb1r/1p2pppp/p2p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6"      # Sicilian
+  - "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP3PPP/R1BQKB1R w KQ - 0 6"    # KID
+  - "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4"      # Nimzo
+
+configs:
+  # Pure MCTS baseline (100 sims for speed)
+  - name: "mcts_100"
+    temperature: 0.25
+    use_mcts: true
+    mcts_simulations: 100
+    use_coach_tal: false
+
+  # MCTS + Coach Tal (the test)
+  - name: "mcts_coach_tal"
+    temperature: 0.25
+    use_mcts: true
+    mcts_simulations: 100
+    use_coach_tal: true
+    lambda_psych: 0.3
+    gamma_confusion: 0.5
+    delta_soundness: 0.15
+    top_k_candidates: 5
+
+
+
+

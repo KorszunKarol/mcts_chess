@@ -21,6 +21,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import logging
 import os
 import sys
@@ -42,6 +43,7 @@ from src.training_ppo.models.tal_jax import TalModelJAX, create_model as create_
 from src.training_ppo.models.victim import VictimModel, create_victim
 from src.training_ppo.models.jax_bridge import jax_to_torch, torch_to_jax
 from src.training_ppo.mcts.batched_mcts import BatchedMCTS, create_mcts
+from src.training_ppo.specs import ACTION_SPACE_SIZE
 from src.training_ppo.rewards.tal_reward import TalRewardEngine, create_reward_engine
 from src.training_ppo.storage.rollout_buffer import RolloutBuffer, create_buffer
 from src.training_ppo.trainer.ppo import PPOTrainer, create_trainer
@@ -51,6 +53,7 @@ from src.training_ppo.metrics.style_metrics import (
     compute_chaos_index,
     detect_agent_suicide,
 )
+from src.utils import Verbosity, sentinel
 
 # For PyTorch model (used in PPO updates)
 from src.transformer_model_pytorch import HybridChessModel, create_model as create_pytorch_model
@@ -120,6 +123,13 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Debug mode (fewer envs, more logging)",
     )
+    parser.add_argument(
+        "--debug_level",
+        type=str,
+        default="OFF",
+        choices=["OFF", "SHAPES", "VALUES", "FULL_TRACE"],
+        help="Sentinel debug verbosity (overrides --debug when provided)",
+    )
     
     return parser.parse_args()
 
@@ -155,6 +165,18 @@ def load_config(args: argparse.Namespace) -> PPOTalConfig:
     return config
 
 
+def configure_sentinel(args: argparse.Namespace) -> None:
+    """Configure the Sentinel debugging system."""
+    level = args.debug_level
+    if args.debug and args.debug_level.upper() == "OFF":
+        level = "SHAPES"
+    sentinel.configure(
+        verbosity=level,
+        inspect_jax_tracers=True,
+        inspect_runtime_values=False,
+    )
+
+
 def set_seeds(seed: int) -> None:
     """Set random seeds for reproducibility."""
     np.random.seed(seed)
@@ -164,9 +186,58 @@ def set_seeds(seed: int) -> None:
     # JAX key is set separately per-call
 
 
+def normalize_legal_mask(mask: jnp.ndarray) -> jnp.ndarray:
+    """
+    Ensure legal mask has shape (B, ACTION_SPACE_SIZE).
+    Collapses accidental (B, B, A) and pads/truncates if needed.
+    """
+    mask = jnp.asarray(mask)
+    if mask.ndim == 3 and mask.shape[0] == mask.shape[1]:
+        mask = mask[:, 0, :]
+    if mask.ndim != 2:
+        raise ValueError(f"legal_mask must be 2D; got {mask.shape}")
+    if mask.shape[1] < ACTION_SPACE_SIZE:
+        pad = ACTION_SPACE_SIZE - mask.shape[1]
+        mask = jnp.pad(mask, ((0, 0), (0, pad)))
+    elif mask.shape[1] > ACTION_SPACE_SIZE:
+        mask = mask[:, :ACTION_SPACE_SIZE]
+    return mask
+
+
+def normalize_policy(policy: jnp.ndarray) -> jnp.ndarray:
+    """
+    Ensure policy has shape (B, ACTION_SPACE_SIZE), collapsing (B, B, A) if seen.
+    """
+    policy = jnp.asarray(policy)
+    if policy.ndim == 3 and policy.shape[0] == policy.shape[1]:
+        policy = policy[:, 0, :]
+    if policy.ndim != 2:
+        raise ValueError(f"policy must be 2D; got {policy.shape}")
+    if policy.shape[1] < ACTION_SPACE_SIZE:
+        pad = ACTION_SPACE_SIZE - policy.shape[1]
+        policy = jnp.pad(policy, ((0, 0), (0, pad)))
+    elif policy.shape[1] > ACTION_SPACE_SIZE:
+        policy = policy[:, :ACTION_SPACE_SIZE]
+    return policy
+
+
+def normalize_actions(actions: jnp.ndarray, num_envs: int) -> jnp.ndarray:
+    """
+    Ensure actions are shape (num_envs,), collapsing (B, B) if seen.
+    """
+    actions = jnp.asarray(actions)
+    if actions.ndim == 2 and actions.shape[0] == actions.shape[1]:
+        actions = actions[:, 0]
+    actions = actions.ravel()
+    if actions.size != num_envs:
+        raise ValueError(f"actions size {actions.size} does not match num_envs {num_envs}")
+    return actions.reshape((num_envs,)).astype(jnp.int32)
+
+
 def main():
     """Main training loop."""
     args = parse_args()
+    configure_sentinel(args)
     config = load_config(args)
     
     # Set seeds
@@ -201,7 +272,9 @@ def main():
         # Initialize with random weights
         jax_key, init_key = jax.random.split(jax_key)
         dummy_input = jnp.zeros((1, 8, 8, 34))
-        jax_params = jax_model.init(init_key, dummy_input, train=False)
+        # Note: init() doesn't take train parameter - it's only for apply()
+        variables = jax_model.init(init_key, dummy_input)
+        jax_params = {"params": variables["params"], "batch_stats": variables.get("batch_stats", {})}
     
     # 3. Victim Model (frozen, high temperature)
     logger.info("Creating victim model...")
@@ -209,7 +282,8 @@ def main():
     
     # 4. Batched MCTS
     logger.info("Initializing batched MCTS...")
-    mcts = create_mcts(jax_model, config.mcts)
+    # Use simplified MCTS to avoid env-state embedding issues and reduce memory
+    mcts = create_mcts(jax_model, config.mcts, use_simplified=True)
     
     # 5. PyTorch Model (for PPO updates)
     logger.info("Loading PyTorch model...")
@@ -273,19 +347,44 @@ def main():
     num_iterations = config.training.total_timesteps // (config.ppo.num_steps * config.env.num_envs)
     
     for iteration in range(start_iteration, num_iterations):
+        iteration_scope = sentinel.scope(f"ITERATION {iteration}") if sentinel.enabled else contextlib.nullcontext()
+        with iteration_scope:
+            rollout_scope = sentinel.scope("ROLLOUT") if sentinel.enabled else contextlib.nullcontext()
+            with rollout_scope:
         # === Rollout Phase ===
         for step in range(config.ppo.num_steps):
             jax_key, action_key, mcts_key = jax.random.split(jax_key, 3)
             
-            # Get legal action mask
-            legal_mask = env.get_legal_actions(state)
+                    # Get legal action mask (normalize to (B, ACTION_SPACE_SIZE))
+                    legal_mask_raw = env.get_legal_actions(state)
+                    legal_mask = normalize_legal_mask(legal_mask_raw)
             
             # Determine whose turn it is
             is_agent = env.is_agent_turn(state)
             
             # === Agent's Turn (System 2: MCTS) ===
             if is_agent.any():
-                # Run batched MCTS for agent positions
+                        # Create env_step_fn for MCTS
+                        # Signature: (state, action) -> (next_obs, reward, done, next_state)
+                        def env_step_fn(state_in, actions_batch):
+                            step_result, next_state = env.step(state_in, actions_batch)
+                            next_obs = step_result.obs
+                            rewards = step_result.rewards
+                            dones = step_result.dones
+                            return next_obs, rewards, dones, next_state
+                        
+                        # Run MCTS (batched or simplified)
+                        if hasattr(mcts, "use_gumbel"):
+                            mcts_output = mcts.search(
+                                jax_params,
+                                mcts_key,
+                                obs,
+                                state,
+                                legal_mask,
+                                env_step_fn=env_step_fn,
+                            )
+                        else:
+                            # SimplifiedMCTS signature: (params, key, obs, legal_mask)
                 mcts_output = mcts.search(
                     jax_params,
                     mcts_key,
@@ -293,15 +392,17 @@ def main():
                     legal_mask,
                 )
                 
-                # Sample from MCTS policy
+                        # Sample from MCTS policy (ensure policy shape is correct)
+                        policy = normalize_policy(mcts_output.policy)
                 agent_actions = jax.random.categorical(
                     action_key,
-                    jnp.log(mcts_output.policy + 1e-8),
+                            jnp.log(policy + 1e-8),
                     axis=-1,
                 )
+                        agent_actions = normalize_actions(agent_actions, config.env.num_envs)
                 q_truth = mcts_output.q_value
             else:
-                agent_actions = jnp.zeros(config.env.num_envs, dtype=jnp.int32)
+                        agent_actions = jnp.zeros((config.env.num_envs,), dtype=jnp.int32)
                 q_truth = jnp.zeros(config.env.num_envs)
             
             # === Victim's Turn (System 1: Raw Policy) ===
@@ -315,15 +416,19 @@ def main():
                     jnp.log(victim_policy + 1e-8),
                     axis=-1,
                 )
+                victim_actions = normalize_actions(victim_actions, config.env.num_envs)
                 v_victim = victim_output.value
             else:
-                victim_actions = jnp.zeros(config.env.num_envs, dtype=jnp.int32)
+                victim_actions = jnp.zeros((config.env.num_envs,), dtype=jnp.int32)
                 victim_entropy = jnp.zeros(config.env.num_envs)
                 v_victim = jnp.zeros(config.env.num_envs)
                 victim_policy = jnp.zeros((config.env.num_envs, env.action_space_size))
             
             # Combine actions based on whose turn
             actions = jnp.where(is_agent, agent_actions, victim_actions)
+            actions = normalize_actions(actions, config.env.num_envs)
+            if actions.shape != (config.env.num_envs,):
+                raise ValueError(f"actions shape {actions.shape} expected {(config.env.num_envs,)}")
             
             # Get value and log_prob from PyTorch model for PPO
             with torch.no_grad():
@@ -342,12 +447,16 @@ def main():
             # Use legal mask as approximate sound mask for now
             sound_mask = legal_mask
             
+            # Extract agent's reward from pgx format (B, 2) -> (B,)
+            # pgx returns [white_reward, black_reward], agent is white
+            game_outcomes = step_result.rewards[:, 0] if step_result.rewards.ndim > 1 else step_result.rewards
+            
             from src.training_ppo.rewards.tal_reward import TalRewardEngineJIT
             rewards_jax, tal_metrics = TalRewardEngineJIT.compute_rewards(
                 q_truth,
                 v_victim,
                 victim_policy,
-                step_result.rewards,
+                game_outcomes,
                 sound_mask,
                 alpha=config.reward.alpha,
                 beta=config.reward.beta,
@@ -395,7 +504,7 @@ def main():
             # Log step metrics
             metrics_logger.log_step({
                 "reward": float(rewards_torch.mean()),
-                "done_rate": float(dones_torch.mean()),
+                "done_rate": float(dones_torch.float().mean()),
             }, num_envs=config.env.num_envs)
             
             # Log Tal metrics (cognitive asymmetry)
@@ -425,6 +534,8 @@ def main():
             
             total_timesteps += config.env.num_envs
         
+            update_scope = sentinel.scope("PPO_UPDATE") if sentinel.enabled else contextlib.nullcontext()
+            with update_scope:
         # === PPO Update ===
         # Get last value for GAE
         with torch.no_grad():
@@ -440,12 +551,12 @@ def main():
         
         # Run PPO update
         ppo_metrics = trainer.update(buffer)
-        
-        # Get episode statistics before resetting
-        episode_stats = buffer.get_episode_statistics(clear=True)
-        
-        # Get buffer statistics for style metrics
-        buffer_stats = buffer.get_statistics()
+                
+                # Get episode statistics before resetting
+                episode_stats = buffer.get_episode_statistics(clear=True)
+                
+                # Get buffer statistics for style metrics
+                buffer_stats = buffer.get_statistics()
         
         # Reset buffer
         buffer.reset()

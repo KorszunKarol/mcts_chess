@@ -18,6 +18,7 @@ from typing import Iterator, Optional, NamedTuple, Dict, Any, List
 
 import torch
 import numpy as np
+from src.utils import sentinel
 
 logger = logging.getLogger(__name__)
 
@@ -214,13 +215,25 @@ class RolloutBuffer:
         """
         if self.step >= self.num_steps:
             raise RuntimeError("RolloutBuffer is full. Call reset() or compute_returns.")
-        
+
+        batch = obs.shape[0]
+        if batch != self.num_envs:
+            raise ValueError(
+                f"Obs batch size {batch} does not match buffer.num_envs={self.num_envs}"
+            )
+
         self.obs[self.step] = obs
         self.actions[self.step] = action
         self.rewards[self.step] = reward
         self.dones[self.step] = done.float()
         self.values[self.step] = value
         self.log_probs[self.step] = log_prob
+        if sentinel.enabled:
+            sentinel.log(f"Buffer step {self.step}/{self.num_steps}")
+            sentinel.log_tensor("obs", obs)
+            sentinel.log_tensor("actions", action)
+            sentinel.log_tensor("reward", reward)
+            sentinel.log_tensor("done", done)
         
         if q_truth is not None:
             self.q_truth[self.step] = q_truth

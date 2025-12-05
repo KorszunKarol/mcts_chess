@@ -1,0 +1,117 @@
+# =============================================================================
+# Settings Arena Configuration
+# =============================================================================
+# This file defines the engine configurations and starting positions for
+# the settings arena tournament.
+#
+# Usage:
+#   python scripts/settings_arena.py --config configs/arena_config.yaml
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Starting Positions
+# -----------------------------------------------------------------------------
+# Curated middlegame positions from various opening structures.
+# Each position should be rich enough to allow meaningful play differences.
+
+positions:
+  # Queen's Gambit Declined - Classical
+  - "r1bqkb1r/pppn1ppp/4pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 2 5"
+  
+  # Italian Game - Giuoco Piano
+  - "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 5"
+  
+  # Sicilian Najdorf - English Attack setup
+  - "rnbqkb1r/1p2pppp/p2p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6"
+  
+  # Ruy Lopez - Closed Defense
+  - "r1bqkb1r/2pp1ppp/p1n2n2/1p2p3/B3P3/5N2/PPPP1PPP/RNBQ1RK1 w kq - 0 7"
+  
+  # French Defense - Advance Variation
+  - "rnbqkb1r/ppp2ppp/4pn2/3pP3/3P4/2N5/PPP2PPP/R1BQKBNR w KQkq - 0 5"
+  
+  # Caro-Kann - Classical
+  - "rn1qkbnr/pp2pppp/2p5/3pPb2/3P4/5N2/PPP2PPP/RNBQKB1R w KQkq - 2 5"
+  
+  # King's Indian Defense - Classical
+  - "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP3PPP/R1BQKB1R w KQ - 0 6"
+  
+  # Nimzo-Indian Defense
+  - "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4"
+  
+  # Queen's Indian Defense
+  - "rnbqkb1r/p1pp1ppp/1p2pn2/8/2PP4/5NP1/PP2PP1P/RNBQKB1R w KQkq - 0 5"
+  
+  # English Opening - Symmetrical
+  - "r1bqkbnr/pp1ppppp/2n5/2p5/2P5/2N3P1/PP1PPP1P/R1BQKBNR w KQkq - 0 4"
+  
+  # Scandinavian Defense
+  - "rnbqkb1r/ppp1pppp/5n2/3P4/3P4/8/PPP2PPP/RNBQKBNR w KQkq - 1 4"
+  
+  # Dutch Defense
+  - "rnbqkb1r/ppppp1pp/5n2/5p2/2PP4/6P1/PP2PP1P/RNBQKBNR w KQkq - 0 4"
+
+
+# -----------------------------------------------------------------------------
+# Engine Configurations
+# -----------------------------------------------------------------------------
+# Define different engine settings to compare.
+# Each config needs a unique 'name' field.
+
+configs:
+  # Baseline - standard temperature, no MCTS
+  - name: "baseline_t1.0"
+    temperature: 1.0
+    use_mcts: false
+
+  # Sharp play - lower temperature for more deterministic moves
+  - name: "sharp_t0.3"
+    temperature: 0.3
+    use_mcts: false
+
+  # Very sharp - almost greedy selection
+  - name: "greedy_t0.1"
+    temperature: 0.1
+    use_mcts: false
+
+  # Higher temperature - more exploratory
+  - name: "exploratory_t1.5"
+    temperature: 1.5
+    use_mcts: false
+
+  # MCTS with standard simulations
+  # NOTE: MCTS is slower but should play stronger
+  # Uncomment these if you want to test MCTS configurations
+  
+  # - name: "mcts_800"
+  #   temperature: 1.0
+  #   use_mcts: true
+  #   mcts_simulations: 800
+  
+  # - name: "mcts_1600"
+  #   temperature: 1.0
+  #   use_mcts: true
+  #   mcts_simulations: 1600
+
+
+# -----------------------------------------------------------------------------
+# Quick Test Configuration (uncomment to use for testing)
+# -----------------------------------------------------------------------------
+# Minimal config for quick sanity checks - uses fewer positions and configs
+
+# positions:
+#   - "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4"
+#   - "rnbqkb1r/ppp2ppp/4pn2/3p4/2PP4/2N5/PP2PPPP/R1BQKBNR w KQkq d6 0 4"
+
+# configs:
+#   - name: "baseline"
+#     temperature: 1.0
+#     use_mcts: false
+#   
+#   - name: "sharp"
+#     temperature: 0.5
+#     use_mcts: false
+
+
+
+

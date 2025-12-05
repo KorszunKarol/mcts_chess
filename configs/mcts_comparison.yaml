@@ -1,0 +1,41 @@
+# =============================================================================
+# MCTS Comparison - Does MCTS improve on optimal temperature?
+# =============================================================================
+# Tests the best temperature (likely 0.1) with and without MCTS
+
+positions:
+  # Full set of 12 positions for comprehensive comparison
+  - "r1bqkb1r/pppn1ppp/4pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 2 5"
+  - "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 5"
+  - "rnbqkb1r/1p2pppp/p2p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6"
+  - "r1bqkb1r/2pp1ppp/p1n2n2/1p2p3/B3P3/5N2/PPPP1PPP/RNBQ1RK1 w kq - 0 7"
+  - "rnbqkb1r/ppp2ppp/4pn2/3pP3/3P4/2N5/PPP2PPP/R1BQKBNR w KQkq - 0 5"
+  - "rn1qkbnr/pp2pppp/2p5/3pPb2/3P4/5N2/PPP2PPP/RNBQKB1R w KQkq - 2 5"
+  - "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP3PPP/R1BQKB1R w KQ - 0 6"
+  - "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4"
+  - "rnbqkb1r/p1pp1ppp/1p2pn2/8/2PP4/5NP1/PP2PP1P/RNBQKB1R w KQkq - 0 5"
+  - "r1bqkbnr/pp1ppppp/2n5/2p5/2P5/2N3P1/PP1PPP1P/R1BQKBNR w KQkq - 0 4"
+  - "rnbqkb1r/ppp1pppp/5n2/3P4/3P4/8/PPP2PPP/RNBQKBNR w KQkq - 1 4"
+  - "rnbqkb1r/ppppp1pp/5n2/5p2/2PP4/6P1/PP2PP1P/RNBQKBNR w KQkq - 0 4"
+
+configs:
+  # Best temperature from Phase 1: t=0.25 (score 0.595)
+  - name: "optimal_t0.25_policy"
+    temperature: 0.25
+    use_mcts: false
+
+  - name: "optimal_t0.25_mcts400"
+    temperature: 0.25
+    use_mcts: true
+    mcts_simulations: 400
+
+  - name: "optimal_t0.25_mcts800"
+    temperature: 0.25
+    use_mcts: true
+    mcts_simulations: 800
+
+  - name: "optimal_t0.25_mcts1600"
+    temperature: 0.25
+    use_mcts: true
+    mcts_simulations: 1600
+

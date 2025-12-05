@@ -1,0 +1,51 @@
+# =============================================================================
+# Temperature Sweep - Fine-tune optimal temperature
+# =============================================================================
+# Tests temperatures from 0.05 to 0.5 to find the sweet spot
+# Based on initial results showing 0.1-0.3 perform best
+
+positions:
+  # Reduced set for faster iteration (6 positions covering different structures)
+  - "r1bqkb1r/pppn1ppp/4pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 2 5"  # QGD
+  - "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 5"  # Italian
+  - "rnbqkb1r/1p2pppp/p2p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6"  # Sicilian
+  - "r1bqkb1r/2pp1ppp/p1n2n2/1p2p3/B3P3/5N2/PPPP1PPP/RNBQ1RK1 w kq - 0 7"  # Ruy Lopez
+  - "rnbqkb1r/ppp2ppp/4pn2/3pP3/3P4/2N5/PPP2PPP/R1BQKBNR w KQkq - 0 5"  # French
+  - "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP3PPP/R1BQKB1R w KQ - 0 6"  # KID
+
+configs:
+  - name: "ultra_greedy_t0.05"
+    temperature: 0.05
+    use_mcts: false
+
+  - name: "greedy_t0.1"
+    temperature: 0.1
+    use_mcts: false
+
+  - name: "sharp_t0.15"
+    temperature: 0.15
+    use_mcts: false
+
+  - name: "sharp_t0.2"
+    temperature: 0.2
+    use_mcts: false
+
+  - name: "sharp_t0.25"
+    temperature: 0.25
+    use_mcts: false
+
+  - name: "sharp_t0.3"
+    temperature: 0.3
+    use_mcts: false
+
+  - name: "moderate_t0.4"
+    temperature: 0.4
+    use_mcts: false
+
+  - name: "moderate_t0.5"
+    temperature: 0.5
+    use_mcts: false
+
+
+
+

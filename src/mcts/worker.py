@@ -14,6 +14,7 @@ import queue
 from node import MCTSNode
 from src.encoder import Encoder
 from src.move_mapping import index_to_move, ACTION_SPACE_SIZE, move_to_index
+from src.utils import unmirror_policy
 
 if TYPE_CHECKING:
     from src.mcts.controller import SharedMemoryConfig
@@ -175,14 +176,22 @@ class RemoteEvaluator:
         if not self.shared_memory_config:
             raise RuntimeError("RemoteEvaluator requires shared memory.")
 
-        encoded_state = self.encoder.encode(board)
+        # Mirror board for Black so the model always sees White's perspective
+        is_black = board.turn == chess.BLACK
+        eval_board = board.mirror() if is_black else board
+
+        encoded_state = self.encoder.encode(eval_board)
         buffer_index = self._allocate_buffer()
         self._write_input_to_buffer(buffer_index, encoded_state)
 
         request = {"worker_id": self.worker_id, "buffer_index": buffer_index}
         self.request_q.put(request)
 
-        return {"buffer_index": buffer_index, "fen": board.fen()}
+        return {
+            "buffer_index": buffer_index,
+            "fen": board.fen(),
+            "is_black": is_black
+        }
 
     def collect_evaluation_batch(self, handles: List[Dict]) -> List[tuple]:
         """
@@ -206,6 +215,11 @@ class RemoteEvaluator:
             buffer_idx = handle["buffer_index"]
             board = chess.Board(handle["fen"])
             value, policy_logits = results_map[buffer_idx]
+            
+            # If we mirrored the board input (Black), we must unmirror the policy output
+            if handle.get("is_black", False):
+                policy_logits = unmirror_policy(policy_logits)
+            
             policy = self._decode_policy(policy_logits, board)
             ordered_results.append((value, policy))
 

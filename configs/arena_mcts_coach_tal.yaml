@@ -1,0 +1,127 @@
+# =============================================================================
+# MCTS + Coach Tal Experiment Configuration
+# =============================================================================
+# This experiment tests whether Coach Tal improves play when given proper
+# MCTS candidates (as intended), rather than raw policy moves.
+#
+# Hypothesis: Coach Tal should perform at least as well as pure MCTS when
+# given stable MCTS candidates, and may find psychologically advantageous
+# moves that the opponent is more likely to misplay.
+#
+# Usage:
+#   python scripts/evaluation/settings_arena.py \
+#       --config configs/arena_mcts_coach_tal.yaml \
+#       --games 2 \
+#       --output results/
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Starting Positions (same as standard arena for comparability)
+# -----------------------------------------------------------------------------
+positions:
+  # Queen's Gambit Declined - Classical
+  - "r1bqkb1r/pppn1ppp/4pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 2 5"
+  
+  # Italian Game - Giuoco Piano
+  - "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 5"
+  
+  # Sicilian Najdorf - English Attack setup
+  - "rnbqkb1r/1p2pppp/p2p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6"
+  
+  # Ruy Lopez - Closed Defense
+  - "r1bqkb1r/2pp1ppp/p1n2n2/1p2p3/B3P3/5N2/PPPP1PPP/RNBQ1RK1 w kq - 0 7"
+  
+  # French Defense - Advance Variation
+  - "rnbqkb1r/ppp2ppp/4pn2/3pP3/3P4/2N5/PPP2PPP/R1BQKBNR w KQkq - 0 5"
+  
+  # Caro-Kann - Classical
+  - "rn1qkbnr/pp2pppp/2p5/3pPb2/3P4/5N2/PPP2PPP/RNBQKB1R w KQkq - 2 5"
+  
+  # King's Indian Defense - Classical
+  - "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP3PPP/R1BQKB1R w KQ - 0 6"
+  
+  # Nimzo-Indian Defense
+  - "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4"
+  
+  # Queen's Indian Defense
+  - "rnbqkb1r/p1pp1ppp/1p2pn2/8/2PP4/5NP1/PP2PP1P/RNBQKB1R w KQkq - 0 5"
+  
+  # English Opening - Symmetrical
+  - "r1bqkbnr/pp1ppppp/2n5/2p5/2P5/2N3P1/PP1PPP1P/R1BQKBNR w KQkq - 0 4"
+  
+  # Scandinavian Defense
+  - "rnbqkb1r/ppp1pppp/5n2/3P4/3P4/8/PPP2PPP/RNBQKBNR w KQkq - 1 4"
+  
+  # Dutch Defense
+  - "rnbqkb1r/ppppp1pp/5n2/5p2/2PP4/6P1/PP2PP1P/RNBQKBNR w KQkq - 0 4"
+
+
+# -----------------------------------------------------------------------------
+# Engine Configurations
+# -----------------------------------------------------------------------------
+configs:
+  # ==========================================================================
+  # Control: Pure MCTS (200 simulations for faster iteration)
+  # ==========================================================================
+  # This is our baseline - standard MCTS without any re-ranking.
+  # Temperature 0.25 for move selection (near-greedy from visit counts).
+  # Note: Using 200 sims instead of 800 for faster experiment iteration.
+  - name: "mcts_200"
+    temperature: 0.25
+    use_mcts: true
+    mcts_simulations: 200
+    use_coach_tal: false
+  
+  # ==========================================================================
+  # Treatment: MCTS + Coach Tal (Balanced)
+  # ==========================================================================
+  # Coach Tal re-ranks MCTS candidates using cognitive asymmetry.
+  # This tests the *intended* use case of Coach Tal.
+  - name: "mcts_coach_tal_balanced"
+    temperature: 0.25
+    use_mcts: true
+    mcts_simulations: 200
+    use_coach_tal: true
+    lambda_psych: 0.3        # Moderate weight on psychological factors
+    gamma_confusion: 0.5      # Balance between user ease and opponent confusion
+    delta_soundness: 0.15     # Allow moves up to ~0.3 pawns worse objectively
+    top_k_candidates: 5       # Re-rank top 5 MCTS moves
+  
+  # ==========================================================================
+  # Treatment: MCTS + Coach Tal (Conservative)
+  # ==========================================================================
+  # More conservative settings - prioritizes soundness over psychology.
+  - name: "mcts_coach_tal_conservative"
+    temperature: 0.25
+    use_mcts: true
+    mcts_simulations: 200
+    use_coach_tal: true
+    lambda_psych: 0.15        # Lower weight on psychological factors
+    gamma_confusion: 0.3      # Less emphasis on opponent confusion
+    delta_soundness: 0.10     # Stricter soundness (only ~0.2 pawns tolerance)
+    top_k_candidates: 3       # Only consider top 3 MCTS moves
+  
+  # ==========================================================================
+  # Treatment: MCTS + Coach Tal (Aggressive) 
+  # ==========================================================================
+  # More aggressive - willing to sacrifice more objective value for psychology.
+  # Inspired by Tal's style of creating maximum complications.
+  - name: "mcts_coach_tal_aggressive"
+    temperature: 0.25
+    use_mcts: true
+    mcts_simulations: 200
+    use_coach_tal: true
+    lambda_psych: 0.5         # High weight on psychological factors
+    gamma_confusion: 0.7      # Strong emphasis on opponent confusion
+    delta_soundness: 0.25     # More lenient (~0.5 pawns tolerance)
+    top_k_candidates: 7       # Consider more candidates for tricky moves
+
+  # ==========================================================================
+  # Baseline: Optimal policy (no search) for reference
+  # ==========================================================================
+  # Include the winner from previous experiment for reference.
+  - name: "optimal_policy_t0.25"
+    temperature: 0.25
+    use_mcts: false
+    use_coach_tal: false
+
