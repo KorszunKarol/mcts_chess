@@ -11,7 +11,7 @@ import cProfile
 import pstats
 import queue
 
-from node import MCTSNode
+from src.mcts.node import MCTSNode
 from src.encoder import Encoder
 from src.move_mapping import index_to_move, ACTION_SPACE_SIZE, move_to_index
 from src.utils import unmirror_policy
@@ -325,7 +325,7 @@ class MCTS:
                 node.expand(policy)
                 node.update(value)
             policy = self._calculate_final_policy(root)
-            q_value = root.q_value()
+            q_value = root.q_value
             return policy, q_value
 
         sims_processed = 0
@@ -376,7 +376,7 @@ class MCTS:
                 sims_processed += len(pending_evaluations)
 
         policy = self._calculate_final_policy(root)
-        q_value = root.q_value()
+        q_value = root.q_value
         return policy, q_value
 
     def _get_game_outcome(self, board: chess.Board) -> float:

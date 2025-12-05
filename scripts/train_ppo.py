@@ -26,37 +26,39 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Optional
 
 # Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-import jax
-import jax.numpy as jnp
-import torch
-import numpy as np
+# Limit JAX preallocation so PyTorch has room on the GPU
+os.environ.setdefault("XLA_PYTHON_CLIENT_MEM_FRACTION", ".50")
 
-from src.training_ppo.config import PPOTalConfig
-from src.training_ppo.env.chess_env import VectorizedChessEnv, create_env
-from src.training_ppo.models.tal_jax import TalModelJAX, create_model as create_jax_model
-from src.training_ppo.models.victim import VictimModel, create_victim
-from src.training_ppo.models.jax_bridge import jax_to_torch, torch_to_jax
-from src.training_ppo.mcts.batched_mcts import BatchedMCTS, create_mcts
-from src.training_ppo.specs import ACTION_SPACE_SIZE
-from src.training_ppo.rewards.tal_reward import TalRewardEngine, create_reward_engine
-from src.training_ppo.storage.rollout_buffer import RolloutBuffer, create_buffer
-from src.training_ppo.trainer.ppo import PPOTrainer, create_trainer
-from src.training_ppo.metrics.logger import TalMetricsLogger, create_logger
-from src.training_ppo.metrics.style_metrics import (
+import jax  # noqa: E402
+import jax.numpy as jnp  # noqa: E402
+import torch  # noqa: E402
+import numpy as np  # noqa: E402
+
+from src.training_ppo.config import PPOTalConfig  # noqa: E402
+from src.training_ppo.env.chess_env import create_env  # noqa: E402
+from src.training_ppo.models.tal_jax import TalModelJAX, create_model as create_jax_model  # noqa: E402
+from src.training_ppo.models.victim import create_victim  # noqa: E402
+from src.training_ppo.models.jax_bridge import jax_to_torch  # noqa: E402
+from src.training_ppo.mcts.batched_mcts import create_mcts  # noqa: E402
+from src.training_ppo.specs import ACTION_SPACE_SIZE  # noqa: E402
+from src.training_ppo.rewards.tal_reward import TalRewardEngineJIT  # noqa: E402
+from src.training_ppo.storage.rollout_buffer import create_buffer  # noqa: E402
+from src.training_ppo.trainer.ppo import create_trainer  # noqa: E402
+from src.training_ppo.metrics.logger import create_logger  # noqa: E402
+from src.training_ppo.metrics.style_metrics import (  # noqa: E402
     compute_material_imbalance,
     compute_chaos_index,
     detect_agent_suicide,
-)
-from src.utils import Verbosity, sentinel
+)  # noqa: E402
+from src.utils import sentinel  # noqa: E402
 
 # For PyTorch model (used in PPO updates)
-from src.transformer_model_pytorch import HybridChessModel, create_model as create_pytorch_model
+from src.transformer_model_pytorch import create_model as create_pytorch_model  # noqa: E402
 
 
 logging.basicConfig(
@@ -112,11 +114,6 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=None,
         help="Random seed",
-    )
-    parser.add_argument(
-        "--no_wandb",
-        action="store_true",
-        help="Disable WandB logging",
     )
     parser.add_argument(
         "--debug",
@@ -234,6 +231,25 @@ def normalize_actions(actions: jnp.ndarray, num_envs: int) -> jnp.ndarray:
     return actions.reshape((num_envs,)).astype(jnp.int32)
 
 
+def compute_sound_mask_from_mcts_policy(
+    mcts_policy: jnp.ndarray,
+    legal_mask: jnp.ndarray,
+    top_k: int = 8,
+) -> jnp.ndarray:
+    """
+    Approximate soundness: keep top-K MCTS moves (intersection with legal).
+    """
+    if mcts_policy.ndim != 2:
+        return legal_mask
+    top_k = max(1, min(top_k, mcts_policy.shape[1]))
+    # Select top-K moves per position
+    topk_idx = jnp.argpartition(mcts_policy, -top_k, axis=-1)[:, -top_k:]
+    mask = jnp.zeros_like(legal_mask, dtype=bool)
+    batch_indices = jnp.arange(mask.shape[0])[:, None]
+    mask = mask.at[batch_indices, topk_idx].set(True)
+    return mask & legal_mask
+
+
 def main():
     """Main training loop."""
     args = parse_args()
@@ -300,11 +316,7 @@ def main():
         except Exception as e:
             logger.warning(f"Could not load PyTorch weights: {e}")
     
-    # 6. Reward Engine
-    logger.info("Initializing reward engine...")
-    reward_engine = create_reward_engine(config)
-    
-    # 7. Rollout Buffer
+    # 6. Rollout Buffer
     logger.info("Creating rollout buffer...")
     buffer = create_buffer(
         num_steps=config.ppo.num_steps,
@@ -313,13 +325,13 @@ def main():
         device=device,
     )
     
-    # 8. PPO Trainer
+    # 7. PPO Trainer
     logger.info("Initializing PPO trainer...")
     trainer = create_trainer(pytorch_model, config, device)
     
-    # 9. Logger
+    # 8. Logger
     logger.info("Setting up logging...")
-    metrics_logger = create_logger(config, use_wandb=not args.no_wandb)
+    metrics_logger = create_logger(config)
     
     # Resume from checkpoint if provided
     start_iteration = 0
@@ -351,19 +363,29 @@ def main():
         with iteration_scope:
             rollout_scope = sentinel.scope("ROLLOUT") if sentinel.enabled else contextlib.nullcontext()
             with rollout_scope:
-        # === Rollout Phase ===
-        for step in range(config.ppo.num_steps):
-            jax_key, action_key, mcts_key = jax.random.split(jax_key, 3)
-            
+                # === Rollout Phase ===
+                for step in range(config.ppo.num_steps):
+                    jax_key, action_key, mcts_key = jax.random.split(jax_key, 3)
+                    
                     # Get legal action mask (normalize to (B, ACTION_SPACE_SIZE))
                     legal_mask_raw = env.get_legal_actions(state)
                     legal_mask = normalize_legal_mask(legal_mask_raw)
-            
-            # Determine whose turn it is
-            is_agent = env.is_agent_turn(state)
-            
-            # === Agent's Turn (System 2: MCTS) ===
-            if is_agent.any():
+                    
+                    # Determine whose turn it is
+                    is_agent = env.is_agent_turn(state)
+
+                    # Evaluate victim everywhere up front so Tal reward never loses signal
+                    victim_output = victim(obs)
+                    victim_policy = victim_output.policy
+                    victim_entropy = victim_output.entropy
+                    v_victim = victim_output.value
+                    
+                    # === Agent's Turn (System 2: MCTS) ===
+                    agent_actions = jnp.zeros((config.env.num_envs,), dtype=jnp.int32)
+                    q_truth = jnp.zeros(config.env.num_envs)
+                    mcts_policy = jnp.zeros_like(legal_mask, dtype=jnp.float32)
+        
+                    if is_agent.any():
                         # Create env_step_fn for MCTS
                         # Signature: (state, action) -> (next_obs, reward, done, next_state)
                         def env_step_fn(state_in, actions_batch):
@@ -385,208 +407,198 @@ def main():
                             )
                         else:
                             # SimplifiedMCTS signature: (params, key, obs, legal_mask)
-                mcts_output = mcts.search(
-                    jax_params,
-                    mcts_key,
-                    obs,
-                    legal_mask,
-                )
-                
+                            mcts_output = mcts.search(
+                                jax_params,
+                                mcts_key,
+                                obs,
+                                legal_mask,
+                            )
+                    
                         # Sample from MCTS policy (ensure policy shape is correct)
-                        policy = normalize_policy(mcts_output.policy)
-                agent_actions = jax.random.categorical(
-                    action_key,
-                            jnp.log(policy + 1e-8),
-                    axis=-1,
-                )
+                        mcts_policy = normalize_policy(mcts_output.policy)
+                        agent_actions = jax.random.categorical(
+                            action_key,
+                            jnp.log(mcts_policy + 1e-8),
+                            axis=-1,
+                        )
                         agent_actions = normalize_actions(agent_actions, config.env.num_envs)
-                q_truth = mcts_output.q_value
-            else:
-                        agent_actions = jnp.zeros((config.env.num_envs,), dtype=jnp.int32)
-                q_truth = jnp.zeros(config.env.num_envs)
+                        q_truth = mcts_output.q_value
+
+                    victim_actions = jnp.zeros((config.env.num_envs,), dtype=jnp.int32)
+                    if (~is_agent).any():
+                        # Mask victim policy to legal moves before sampling
+                        victim_policy_masked = jnp.where(legal_mask, victim_policy, 0.0)
+                        victim_policy_masked = victim_policy_masked / (
+                            victim_policy_masked.sum(axis=-1, keepdims=True) + 1e-8
+                        )
+                        victim_actions = jax.random.categorical(
+                            action_key,
+                            jnp.log(victim_policy_masked + 1e-8),
+                            axis=-1,
+                        )
+                        victim_actions = normalize_actions(victim_actions, config.env.num_envs)
+                    
+                    # Combine actions based on whose turn
+                    actions = jnp.where(is_agent, agent_actions, victim_actions)
+                    actions = normalize_actions(actions, config.env.num_envs)
+                    if actions.shape != (config.env.num_envs,):
+                        raise ValueError(f"actions shape {actions.shape} expected {(config.env.num_envs,)}")
+                    
+                    # Get value and log_prob from PyTorch model for PPO
+                    with torch.no_grad():
+                        value_probs, policy_logits = pytorch_model(obs_torch)
+                        value = (value_probs[:, 2] - value_probs[:, 0])  # Win - Loss
+                        
+                        # Log prob of taken action
+                        log_probs_all = torch.log_softmax(policy_logits, dim=-1)
+                        actions_torch = jax_to_torch(actions, device).long()
+                        log_prob = log_probs_all.gather(1, actions_torch.unsqueeze(-1)).squeeze(-1)
+                    
+                    # Step environment
+                    step_result, state = env.step(state, actions)
+                    
+                    # Compute Tal reward for agent's moves
+                    # Approximate soundness using top-K MCTS moves; fallback to legal mask if unavailable
+                    sound_mask = compute_sound_mask_from_mcts_policy(mcts_policy, legal_mask)
+                    
+                    # Extract agent's reward from pgx format (B, 2) -> (B,)
+                    # pgx returns [white_reward, black_reward], agent is white
+                    game_outcomes = step_result.rewards[:, 0] if step_result.rewards.ndim > 1 else step_result.rewards
+                    rewards_jax, tal_metrics = TalRewardEngineJIT.compute_rewards(
+                        q_truth,
+                        v_victim,
+                        victim_policy,
+                        game_outcomes,
+                        sound_mask,
+                        alpha=config.reward.alpha,
+                        beta=config.reward.beta,
+                    )
+                    
+                    # Convert to PyTorch
+                    rewards_torch = jax_to_torch(rewards_jax, device)
+                    dones_torch = jax_to_torch(step_result.dones, device)
+                    q_truth_torch = jax_to_torch(q_truth, device)
+                    victim_entropy_torch = jax_to_torch(victim_entropy, device)
+                    v_victim_torch = jax_to_torch(v_victim, device)
+                    
+                    # === Compute Style Metrics ===
+                    # Material imbalance: positive = agent ahead, negative = sacrificing (Tal-style!)
+                    material_imbalance = compute_material_imbalance(obs_torch)
+                    
+                    # Chaos index: low = opponent has few good moves (we want this!)
+                    # Convert JAX masks to PyTorch
+                    legal_mask_torch = jax_to_torch(legal_mask, device).bool()
+                    sound_mask_torch = jax_to_torch(sound_mask, device).bool()
+                    chaos_index = compute_chaos_index(legal_mask_torch, sound_mask_torch)
+                    
+                    # Agent suicide detection: moves where Q < -0.5 (losing)
+                    agent_suicide = detect_agent_suicide(q_truth_torch, threshold=-0.5)
+                    
+                    # Value gap for episode tracking
+                    value_gap = q_truth_torch - v_victim_torch
+                    
+                    # Add to buffer (with style metrics)
+                    buffer.add(
+                        obs=obs_torch,
+                        action=actions_torch,
+                        reward=rewards_torch,
+                        done=dones_torch,
+                        value=value,
+                        log_prob=log_prob,
+                        q_truth=q_truth_torch,
+                        victim_entropy=victim_entropy_torch,
+                        material_imbalance=material_imbalance,
+                        chaos_index=chaos_index,
+                        agent_suicide=agent_suicide,
+                        value_gap=value_gap,
+                    )
+                    
+                    # Log step metrics
+                    metrics_logger.log_step({
+                        "reward": float(rewards_torch.mean()),
+                        "done_rate": float(dones_torch.float().mean()),
+                    }, num_envs=config.env.num_envs)
+                    
+                    # Log Tal metrics (cognitive asymmetry)
+                    metrics_logger.log_tal_metrics({
+                        "survival_mass_mean": float(tal_metrics["survival_mass_mean"]),
+                        "value_gap_mean": float(tal_metrics["value_gap_mean"]),
+                    })
+                    
+                    # Log style metrics (Tal personality verification)
+                    metrics_logger.log_style_metrics({
+                        "material_imbalance_mean": float(material_imbalance.mean()),
+                        "chaos_index_mean": float(chaos_index.mean()),
+                    })
+                    
+                    # Log safety metrics (hope chess prevention)
+                    metrics_logger.log_safety_metrics({
+                        "agent_suicide_rate": float(agent_suicide.mean()),
+                    })
+                    
+                    # Update state
+                    obs = step_result.obs
+                    obs_torch = jax_to_torch(obs, device)
+                    
+                    # Auto-reset terminated environments
+                    jax_key, reset_key = jax.random.split(jax_key)
+                    state = env.auto_reset(state, reset_key)
+                    
+                    total_timesteps += config.env.num_envs
             
-            # === Victim's Turn (System 1: Raw Policy) ===
-            if (~is_agent).any():
-                victim_output = victim(obs)
-                victim_policy = victim_output.policy
-                victim_entropy = victim_output.entropy
-                
-                victim_actions = jax.random.categorical(
-                    action_key,
-                    jnp.log(victim_policy + 1e-8),
-                    axis=-1,
-                )
-                victim_actions = normalize_actions(victim_actions, config.env.num_envs)
-                v_victim = victim_output.value
-            else:
-                victim_actions = jnp.zeros((config.env.num_envs,), dtype=jnp.int32)
-                victim_entropy = jnp.zeros(config.env.num_envs)
-                v_victim = jnp.zeros(config.env.num_envs)
-                victim_policy = jnp.zeros((config.env.num_envs, env.action_space_size))
-            
-            # Combine actions based on whose turn
-            actions = jnp.where(is_agent, agent_actions, victim_actions)
-            actions = normalize_actions(actions, config.env.num_envs)
-            if actions.shape != (config.env.num_envs,):
-                raise ValueError(f"actions shape {actions.shape} expected {(config.env.num_envs,)}")
-            
-            # Get value and log_prob from PyTorch model for PPO
-            with torch.no_grad():
-                value_probs, policy_logits = pytorch_model(obs_torch)
-                value = (value_probs[:, 2] - value_probs[:, 0])  # Win - Loss
-                
-                # Log prob of taken action
-                log_probs_all = torch.log_softmax(policy_logits, dim=-1)
-                actions_torch = jax_to_torch(actions, device).long()
-                log_prob = log_probs_all.gather(1, actions_torch.unsqueeze(-1)).squeeze(-1)
-            
-            # Step environment
-            step_result, state = env.step(state, actions)
-            
-            # Compute Tal reward for agent's moves
-            # Use legal mask as approximate sound mask for now
-            sound_mask = legal_mask
-            
-            # Extract agent's reward from pgx format (B, 2) -> (B,)
-            # pgx returns [white_reward, black_reward], agent is white
-            game_outcomes = step_result.rewards[:, 0] if step_result.rewards.ndim > 1 else step_result.rewards
-            
-            from src.training_ppo.rewards.tal_reward import TalRewardEngineJIT
-            rewards_jax, tal_metrics = TalRewardEngineJIT.compute_rewards(
-                q_truth,
-                v_victim,
-                victim_policy,
-                game_outcomes,
-                sound_mask,
-                alpha=config.reward.alpha,
-                beta=config.reward.beta,
-            )
-            
-            # Convert to PyTorch
-            rewards_torch = jax_to_torch(rewards_jax, device)
-            dones_torch = jax_to_torch(step_result.dones, device)
-            q_truth_torch = jax_to_torch(q_truth, device)
-            victim_entropy_torch = jax_to_torch(victim_entropy, device)
-            v_victim_torch = jax_to_torch(v_victim, device)
-            
-            # === Compute Style Metrics ===
-            # Material imbalance: positive = agent ahead, negative = sacrificing (Tal-style!)
-            material_imbalance = compute_material_imbalance(obs_torch)
-            
-            # Chaos index: low = opponent has few good moves (we want this!)
-            # Convert JAX masks to PyTorch
-            legal_mask_torch = jax_to_torch(legal_mask, device).bool()
-            sound_mask_torch = jax_to_torch(sound_mask, device).bool()
-            chaos_index = compute_chaos_index(legal_mask_torch, sound_mask_torch)
-            
-            # Agent suicide detection: moves where Q < -0.5 (losing)
-            agent_suicide = detect_agent_suicide(q_truth_torch, threshold=-0.5)
-            
-            # Value gap for episode tracking
-            value_gap = q_truth_torch - v_victim_torch
-            
-            # Add to buffer (with style metrics)
-            buffer.add(
-                obs=obs_torch,
-                action=actions_torch,
-                reward=rewards_torch,
-                done=dones_torch,
-                value=value,
-                log_prob=log_prob,
-                q_truth=q_truth_torch,
-                victim_entropy=victim_entropy_torch,
-                material_imbalance=material_imbalance,
-                chaos_index=chaos_index,
-                agent_suicide=agent_suicide,
-                value_gap=value_gap,
-            )
-            
-            # Log step metrics
-            metrics_logger.log_step({
-                "reward": float(rewards_torch.mean()),
-                "done_rate": float(dones_torch.float().mean()),
-            }, num_envs=config.env.num_envs)
-            
-            # Log Tal metrics (cognitive asymmetry)
-            metrics_logger.log_tal_metrics({
-                "survival_mass_mean": float(tal_metrics["survival_mass_mean"]),
-                "value_gap_mean": float(tal_metrics["value_gap_mean"]),
-            })
-            
-            # Log style metrics (Tal personality verification)
-            metrics_logger.log_style_metrics({
-                "material_imbalance_mean": float(material_imbalance.mean()),
-                "chaos_index_mean": float(chaos_index.mean()),
-            })
-            
-            # Log safety metrics (hope chess prevention)
-            metrics_logger.log_safety_metrics({
-                "agent_suicide_rate": float(agent_suicide.mean()),
-            })
-            
-            # Update state
-            obs = step_result.obs
-            obs_torch = jax_to_torch(obs, device)
-            
-            # Auto-reset terminated environments
-            jax_key, reset_key = jax.random.split(jax_key)
-            state = env.auto_reset(state, reset_key)
-            
-            total_timesteps += config.env.num_envs
-        
             update_scope = sentinel.scope("PPO_UPDATE") if sentinel.enabled else contextlib.nullcontext()
             with update_scope:
-        # === PPO Update ===
-        # Get last value for GAE
-        with torch.no_grad():
-            value_probs, _ = pytorch_model(obs_torch)
-            last_value = value_probs[:, 2] - value_probs[:, 0]
-        
-        # Compute returns and advantages
-        buffer.compute_returns_and_advantages(
-            last_value,
-            gamma=config.ppo.gamma,
-            gae_lambda=config.ppo.gae_lambda,
-        )
-        
-        # Run PPO update
-        ppo_metrics = trainer.update(buffer)
+                # === PPO Update ===
+                # Get last value for GAE
+                with torch.no_grad():
+                    value_probs, _ = pytorch_model(obs_torch)
+                    last_value = value_probs[:, 2] - value_probs[:, 0]
+                
+                # Compute returns and advantages
+                buffer.compute_returns_and_advantages(
+                    last_value,
+                    gamma=config.ppo.gamma,
+                    gae_lambda=config.ppo.gae_lambda,
+                )
+                
+                # Run PPO update
+                ppo_metrics = trainer.update(buffer)
                 
                 # Get episode statistics before resetting
                 episode_stats = buffer.get_episode_statistics(clear=True)
                 
                 # Get buffer statistics for style metrics
                 buffer_stats = buffer.get_statistics()
-        
-        # Reset buffer
-        buffer.reset()
-        
-        # === Logging ===
-        if iteration % config.training.log_interval == 0:
-            metrics_logger.log_iteration(
-                iteration=iteration,
-                ppo_metrics=ppo_metrics,
-                episode_stats=episode_stats,
-                style_metrics={
-                    "material_imbalance_mean": buffer_stats.get("material_imbalance_mean", 0),
-                    "chaos_index_mean": buffer_stats.get("chaos_index_mean", 0),
-                },
-                safety_metrics={
-                    "agent_suicide_rate": buffer_stats.get("agent_suicide_rate", 0),
-                },
-            )
-        
-        # === Checkpointing ===
-        if iteration % config.training.save_interval == 0 and iteration > 0:
-            checkpoint_dir = Path(config.training.checkpoint_dir)
-            checkpoint_dir.mkdir(parents=True, exist_ok=True)
-            checkpoint_path = checkpoint_dir / f"checkpoint_{iteration}.pt"
-            trainer.save_checkpoint(str(checkpoint_path))
-            metrics_logger.log_model_checkpoint(str(checkpoint_path), iteration)
-        
-        # Sync JAX params from PyTorch (for next rollout)
-        # This is simplified; proper implementation would convert weights
-        # For now, they stay in sync since we're using the same initial weights
+            
+            # Reset buffer
+            buffer.reset()
+            
+            # === Logging ===
+            if iteration % config.training.log_interval == 0:
+                metrics_logger.log_iteration(
+                    iteration=iteration,
+                    ppo_metrics=ppo_metrics,
+                    episode_stats=episode_stats,
+                    style_metrics={
+                        "material_imbalance_mean": buffer_stats.get("material_imbalance_mean", 0),
+                        "chaos_index_mean": buffer_stats.get("chaos_index_mean", 0),
+                    },
+                    safety_metrics={
+                        "agent_suicide_rate": buffer_stats.get("agent_suicide_rate", 0),
+                    },
+                )
+            
+            # === Checkpointing ===
+            if iteration % config.training.save_interval == 0 and iteration > 0:
+                checkpoint_dir = Path(config.training.checkpoint_dir)
+                checkpoint_dir.mkdir(parents=True, exist_ok=True)
+                checkpoint_path = checkpoint_dir / f"checkpoint_{iteration}.pt"
+                trainer.save_checkpoint(str(checkpoint_path))
+                metrics_logger.log_model_checkpoint(str(checkpoint_path), iteration)
+            
+            # Sync JAX params from PyTorch (for next rollout)
+            # This is simplified; proper implementation would convert weights
+            # For now, they stay in sync since we're using the same initial weights
     
     # === Finish ===
     logger.info("Training complete!")

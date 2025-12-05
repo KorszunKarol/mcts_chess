@@ -1,0 +1,1431 @@
+{
+  "timestamp": "2025-12-03T22:01:21.517719",
+  "model_path": "saved_models/best_model_pytorch.pt",
+  "positions_count": 12,
+  "games_per_matchup": 2,
+  "total_games": 144,
+  "completed_games": 144,
+  "configs": [
+    {
+      "name": "optimal_policy_t0.25",
+      "temperature": 0.25,
+      "use_mcts": false,
+      "mcts_simulations": 800,
+      "mcts_cpuct": 4.0,
+      "use_coach_tal": false,
+      "lambda_psych": 0.3,
+      "gamma_confusion": 0.5,
+      "delta_soundness": 0.15,
+      "top_k_candidates": 5
+    },
+    {
+      "name": "coach_tal_conservative",
+      "temperature": 0.25,
+      "use_mcts": false,
+      "mcts_simulations": 800,
+      "mcts_cpuct": 4.0,
+      "use_coach_tal": true,
+      "lambda_psych": 0.2,
+      "gamma_confusion": 0.4,
+      "delta_soundness": 0.2,
+      "top_k_candidates": 5
+    },
+    {
+      "name": "coach_tal_balanced",
+      "temperature": 0.25,
+      "use_mcts": false,
+      "mcts_simulations": 800,
+      "mcts_cpuct": 4.0,
+      "use_coach_tal": true,
+      "lambda_psych": 0.3,
+      "gamma_confusion": 0.5,
+      "delta_soundness": 0.15,
+      "top_k_candidates": 5
+    },
+    {
+      "name": "coach_tal_aggressive",
+      "temperature": 0.25,
+      "use_mcts": false,
+      "mcts_simulations": 800,
+      "mcts_cpuct": 4.0,
+      "use_coach_tal": true,
+      "lambda_psych": 0.4,
+      "gamma_confusion": 0.6,
+      "delta_soundness": 0.1,
+      "top_k_candidates": 5
+    }
+  ],
+  "results": {
+    "optimal_policy_t0.25": {
+      "wins": 63,
+      "losses": 2,
+      "draws": 7,
+      "games": 72,
+      "score": 0.924
+    },
+    "coach_tal_conservative": {
+      "wins": 22,
+      "losses": 44,
+      "draws": 6,
+      "games": 72,
+      "score": 0.347
+    },
+    "coach_tal_balanced": {
+      "wins": 23,
+      "losses": 44,
+      "draws": 5,
+      "games": 72,
+      "score": 0.354
+    },
+    "coach_tal_aggressive": {
+      "wins": 23,
+      "losses": 41,
+      "draws": 8,
+      "games": 72,
+      "score": 0.375
+    }
+  },
+  "head_to_head": {
+    "coach_tal_conservative vs optimal_policy_t0.25": {
+      "wins": 0,
+      "losses": 22,
+      "draws": 2,
+      "games": 24,
+      "score": 0.042
+    },
+    "coach_tal_balanced vs optimal_policy_t0.25": {
+      "wins": 1,
+      "losses": 22,
+      "draws": 1,
+      "games": 24,
+      "score": 0.062
+    },
+    "coach_tal_aggressive vs optimal_policy_t0.25": {
+      "wins": 1,
+      "losses": 19,
+      "draws": 4,
+      "games": 24,
+      "score": 0.125
+    },
+    "coach_tal_balanced vs coach_tal_conservative": {
+      "wins": 11,
+      "losses": 11,
+      "draws": 2,
+      "games": 24,
+      "score": 0.5
+    },
+    "coach_tal_aggressive vs coach_tal_conservative": {
+      "wins": 11,
+      "losses": 11,
+      "draws": 2,
+      "games": 24,
+      "score": 0.5
+    },
+    "coach_tal_aggressive vs coach_tal_balanced": {
+      "wins": 11,
+      "losses": 11,
+      "draws": 2,
+      "games": 24,
+      "score": 0.5
+    }
+  },
+  "games": [
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "r1bqkb1r/pppn1ppp/4pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 2 5",
+      "result": "1/2-1/2",
+      "moves": 44,
+      "termination": "repetition",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "r1bqkb1r/pppn1ppp/4pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 2 5",
+      "result": "0-1",
+      "moves": 96,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 5",
+      "result": "1-0",
+      "moves": 41,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 5",
+      "result": "1/2-1/2",
+      "moves": 47,
+      "termination": "repetition",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "rnbqkb1r/1p2pppp/p2p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6",
+      "result": "1-0",
+      "moves": 63,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "rnbqkb1r/1p2pppp/p2p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6",
+      "result": "0-1",
+      "moves": 70,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "r1bqkb1r/2pp1ppp/p1n2n2/1p2p3/B3P3/5N2/PPPP1PPP/RNBQ1RK1 w kq - 0 7",
+      "result": "1-0",
+      "moves": 45,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "r1bqkb1r/2pp1ppp/p1n2n2/1p2p3/B3P3/5N2/PPPP1PPP/RNBQ1RK1 w kq - 0 7",
+      "result": "0-1",
+      "moves": 50,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "rnbqkb1r/ppp2ppp/4pn2/3pP3/3P4/2N5/PPP2PPP/R1BQKBNR w KQkq - 0 5",
+      "result": "1-0",
+      "moves": 9,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "rnbqkb1r/ppp2ppp/4pn2/3pP3/3P4/2N5/PPP2PPP/R1BQKBNR w KQkq - 0 5",
+      "result": "0-1",
+      "moves": 20,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "rn1qkbnr/pp2pppp/2p5/3pPb2/3P4/5N2/PPP2PPP/RNBQKB1R w KQkq - 2 5",
+      "result": "1-0",
+      "moves": 21,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "rn1qkbnr/pp2pppp/2p5/3pPb2/3P4/5N2/PPP2PPP/RNBQKB1R w KQkq - 2 5",
+      "result": "0-1",
+      "moves": 52,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP3PPP/R1BQKB1R w KQ - 0 6",
+      "result": "1-0",
+      "moves": 65,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP3PPP/R1BQKB1R w KQ - 0 6",
+      "result": "0-1",
+      "moves": 52,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4",
+      "result": "1-0",
+      "moves": 31,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4",
+      "result": "0-1",
+      "moves": 30,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "rnbqkb1r/p1pp1ppp/1p2pn2/8/2PP4/5NP1/PP2PP1P/RNBQKB1R w KQkq - 0 5",
+      "result": "1-0",
+      "moves": 27,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "rnbqkb1r/p1pp1ppp/1p2pn2/8/2PP4/5NP1/PP2PP1P/RNBQKB1R w KQkq - 0 5",
+      "result": "0-1",
+      "moves": 34,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "r1bqkbnr/pp1ppppp/2n5/2p5/2P5/2N3P1/PP1PPP1P/R1BQKBNR w KQkq - 0 4",
+      "result": "1-0",
+      "moves": 55,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "r1bqkbnr/pp1ppppp/2n5/2p5/2P5/2N3P1/PP1PPP1P/R1BQKBNR w KQkq - 0 4",
+      "result": "0-1",
+      "moves": 62,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "rnbqkb1r/ppp1pppp/5n2/3P4/3P4/8/PPP2PPP/RNBQKBNR w KQkq - 1 4",
+      "result": "1-0",
+      "moves": 47,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "rnbqkb1r/ppp1pppp/5n2/3P4/3P4/8/PPP2PPP/RNBQKBNR w KQkq - 1 4",
+      "result": "0-1",
+      "moves": 56,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "rnbqkb1r/ppppp1pp/5n2/5p2/2PP4/6P1/PP2PP1P/RNBQKBNR w KQkq - 0 4",
+      "result": "1-0",
+      "moves": 47,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "rnbqkb1r/ppppp1pp/5n2/5p2/2PP4/6P1/PP2PP1P/RNBQKBNR w KQkq - 0 4",
+      "result": "0-1",
+      "moves": 44,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "r1bqkb1r/pppn1ppp/4pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 2 5",
+      "result": "1-0",
+      "moves": 37,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "r1bqkb1r/pppn1ppp/4pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 2 5",
+      "result": "0-1",
+      "moves": 82,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 5",
+      "result": "1-0",
+      "moves": 45,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 5",
+      "result": "0-1",
+      "moves": 72,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "rnbqkb1r/1p2pppp/p2p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6",
+      "result": "1-0",
+      "moves": 23,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "rnbqkb1r/1p2pppp/p2p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6",
+      "result": "0-1",
+      "moves": 88,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "r1bqkb1r/2pp1ppp/p1n2n2/1p2p3/B3P3/5N2/PPPP1PPP/RNBQ1RK1 w kq - 0 7",
+      "result": "1-0",
+      "moves": 23,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "r1bqkb1r/2pp1ppp/p1n2n2/1p2p3/B3P3/5N2/PPPP1PPP/RNBQ1RK1 w kq - 0 7",
+      "result": "0-1",
+      "moves": 56,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "rnbqkb1r/ppp2ppp/4pn2/3pP3/3P4/2N5/PPP2PPP/R1BQKBNR w KQkq - 0 5",
+      "result": "1-0",
+      "moves": 9,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "rnbqkb1r/ppp2ppp/4pn2/3pP3/3P4/2N5/PPP2PPP/R1BQKBNR w KQkq - 0 5",
+      "result": "0-1",
+      "moves": 40,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "rn1qkbnr/pp2pppp/2p5/3pPb2/3P4/5N2/PPP2PPP/RNBQKB1R w KQkq - 2 5",
+      "result": "1-0",
+      "moves": 31,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "rn1qkbnr/pp2pppp/2p5/3pPb2/3P4/5N2/PPP2PPP/RNBQKB1R w KQkq - 2 5",
+      "result": "1-0",
+      "moves": 75,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP3PPP/R1BQKB1R w KQ - 0 6",
+      "result": "1-0",
+      "moves": 37,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP3PPP/R1BQKB1R w KQ - 0 6",
+      "result": "0-1",
+      "moves": 104,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4",
+      "result": "1-0",
+      "moves": 35,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4",
+      "result": "0-1",
+      "moves": 74,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "rnbqkb1r/p1pp1ppp/1p2pn2/8/2PP4/5NP1/PP2PP1P/RNBQKB1R w KQkq - 0 5",
+      "result": "1-0",
+      "moves": 35,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "rnbqkb1r/p1pp1ppp/1p2pn2/8/2PP4/5NP1/PP2PP1P/RNBQKB1R w KQkq - 0 5",
+      "result": "0-1",
+      "moves": 40,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "r1bqkbnr/pp1ppppp/2n5/2p5/2P5/2N3P1/PP1PPP1P/R1BQKBNR w KQkq - 0 4",
+      "result": "1-0",
+      "moves": 51,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "r1bqkbnr/pp1ppppp/2n5/2p5/2P5/2N3P1/PP1PPP1P/R1BQKBNR w KQkq - 0 4",
+      "result": "1/2-1/2",
+      "moves": 97,
+      "termination": "repetition",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "rnbqkb1r/ppp1pppp/5n2/3P4/3P4/8/PPP2PPP/RNBQKBNR w KQkq - 1 4",
+      "result": "1-0",
+      "moves": 31,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "rnbqkb1r/ppp1pppp/5n2/3P4/3P4/8/PPP2PPP/RNBQKBNR w KQkq - 1 4",
+      "result": "0-1",
+      "moves": 72,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "rnbqkb1r/ppppp1pp/5n2/5p2/2PP4/6P1/PP2PP1P/RNBQKBNR w KQkq - 0 4",
+      "result": "1-0",
+      "moves": 49,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "rnbqkb1r/ppppp1pp/5n2/5p2/2PP4/6P1/PP2PP1P/RNBQKBNR w KQkq - 0 4",
+      "result": "0-1",
+      "moves": 52,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "r1bqkb1r/pppn1ppp/4pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 2 5",
+      "result": "1-0",
+      "moves": 35,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "r1bqkb1r/pppn1ppp/4pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 2 5",
+      "result": "0-1",
+      "moves": 86,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 5",
+      "result": "1-0",
+      "moves": 39,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 5",
+      "result": "0-1",
+      "moves": 78,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "rnbqkb1r/1p2pppp/p2p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6",
+      "result": "1-0",
+      "moves": 13,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "rnbqkb1r/1p2pppp/p2p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6",
+      "result": "0-1",
+      "moves": 22,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "r1bqkb1r/2pp1ppp/p1n2n2/1p2p3/B3P3/5N2/PPPP1PPP/RNBQ1RK1 w kq - 0 7",
+      "result": "1-0",
+      "moves": 23,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "r1bqkb1r/2pp1ppp/p1n2n2/1p2p3/B3P3/5N2/PPPP1PPP/RNBQ1RK1 w kq - 0 7",
+      "result": "0-1",
+      "moves": 54,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "rnbqkb1r/ppp2ppp/4pn2/3pP3/3P4/2N5/PPP2PPP/R1BQKBNR w KQkq - 0 5",
+      "result": "1-0",
+      "moves": 11,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "rnbqkb1r/ppp2ppp/4pn2/3pP3/3P4/2N5/PPP2PPP/R1BQKBNR w KQkq - 0 5",
+      "result": "0-1",
+      "moves": 20,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "rn1qkbnr/pp2pppp/2p5/3pPb2/3P4/5N2/PPP2PPP/RNBQKB1R w KQkq - 2 5",
+      "result": "1-0",
+      "moves": 31,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "rn1qkbnr/pp2pppp/2p5/3pPb2/3P4/5N2/PPP2PPP/RNBQKB1R w KQkq - 2 5",
+      "result": "1/2-1/2",
+      "moves": 74,
+      "termination": "repetition",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP3PPP/R1BQKB1R w KQ - 0 6",
+      "result": "1-0",
+      "moves": 63,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP3PPP/R1BQKB1R w KQ - 0 6",
+      "result": "0-1",
+      "moves": 54,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4",
+      "result": "1-0",
+      "moves": 49,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4",
+      "result": "1/2-1/2",
+      "moves": 51,
+      "termination": "repetition",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "rnbqkb1r/p1pp1ppp/1p2pn2/8/2PP4/5NP1/PP2PP1P/RNBQKB1R w KQkq - 0 5",
+      "result": "1-0",
+      "moves": 25,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "rnbqkb1r/p1pp1ppp/1p2pn2/8/2PP4/5NP1/PP2PP1P/RNBQKB1R w KQkq - 0 5",
+      "result": "0-1",
+      "moves": 24,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "r1bqkbnr/pp1ppppp/2n5/2p5/2P5/2N3P1/PP1PPP1P/R1BQKBNR w KQkq - 0 4",
+      "result": "1-0",
+      "moves": 49,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "r1bqkbnr/pp1ppppp/2n5/2p5/2P5/2N3P1/PP1PPP1P/R1BQKBNR w KQkq - 0 4",
+      "result": "1/2-1/2",
+      "moves": 44,
+      "termination": "repetition",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "rnbqkb1r/ppp1pppp/5n2/3P4/3P4/8/PPP2PPP/RNBQKBNR w KQkq - 1 4",
+      "result": "1/2-1/2",
+      "moves": 95,
+      "termination": "stalemate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "rnbqkb1r/ppp1pppp/5n2/3P4/3P4/8/PPP2PPP/RNBQKBNR w KQkq - 1 4",
+      "result": "0-1",
+      "moves": 48,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "optimal_policy_t0.25",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "rnbqkb1r/ppppp1pp/5n2/5p2/2PP4/6P1/PP2PP1P/RNBQKBNR w KQkq - 0 4",
+      "result": "1-0",
+      "moves": 53,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "optimal_policy_t0.25",
+      "starting_fen": "rnbqkb1r/ppppp1pp/5n2/5p2/2PP4/6P1/PP2PP1P/RNBQKBNR w KQkq - 0 4",
+      "result": "1-0",
+      "moves": 53,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "r1bqkb1r/pppn1ppp/4pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 2 5",
+      "result": "1-0",
+      "moves": 61,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "r1bqkb1r/pppn1ppp/4pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 2 5",
+      "result": "1-0",
+      "moves": 61,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 5",
+      "result": "1-0",
+      "moves": 45,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 5",
+      "result": "1-0",
+      "moves": 45,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "rnbqkb1r/1p2pppp/p2p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6",
+      "result": "1-0",
+      "moves": 69,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "rnbqkb1r/1p2pppp/p2p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6",
+      "result": "1-0",
+      "moves": 69,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "r1bqkb1r/2pp1ppp/p1n2n2/1p2p3/B3P3/5N2/PPPP1PPP/RNBQ1RK1 w kq - 0 7",
+      "result": "0-1",
+      "moves": 16,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "r1bqkb1r/2pp1ppp/p1n2n2/1p2p3/B3P3/5N2/PPPP1PPP/RNBQ1RK1 w kq - 0 7",
+      "result": "0-1",
+      "moves": 16,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "rnbqkb1r/ppp2ppp/4pn2/3pP3/3P4/2N5/PPP2PPP/R1BQKBNR w KQkq - 0 5",
+      "result": "1/2-1/2",
+      "moves": 90,
+      "termination": "repetition",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "rnbqkb1r/ppp2ppp/4pn2/3pP3/3P4/2N5/PPP2PPP/R1BQKBNR w KQkq - 0 5",
+      "result": "1/2-1/2",
+      "moves": 90,
+      "termination": "repetition",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "rn1qkbnr/pp2pppp/2p5/3pPb2/3P4/5N2/PPP2PPP/RNBQKB1R w KQkq - 2 5",
+      "result": "1-0",
+      "moves": 43,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "rn1qkbnr/pp2pppp/2p5/3pPb2/3P4/5N2/PPP2PPP/RNBQKB1R w KQkq - 2 5",
+      "result": "1-0",
+      "moves": 43,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP3PPP/R1BQKB1R w KQ - 0 6",
+      "result": "1-0",
+      "moves": 69,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP3PPP/R1BQKB1R w KQ - 0 6",
+      "result": "1-0",
+      "moves": 69,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4",
+      "result": "0-1",
+      "moves": 70,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4",
+      "result": "0-1",
+      "moves": 70,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "rnbqkb1r/p1pp1ppp/1p2pn2/8/2PP4/5NP1/PP2PP1P/RNBQKB1R w KQkq - 0 5",
+      "result": "1-0",
+      "moves": 73,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "rnbqkb1r/p1pp1ppp/1p2pn2/8/2PP4/5NP1/PP2PP1P/RNBQKB1R w KQkq - 0 5",
+      "result": "1-0",
+      "moves": 73,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "r1bqkbnr/pp1ppppp/2n5/2p5/2P5/2N3P1/PP1PPP1P/R1BQKBNR w KQkq - 0 4",
+      "result": "1-0",
+      "moves": 41,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "r1bqkbnr/pp1ppppp/2n5/2p5/2P5/2N3P1/PP1PPP1P/R1BQKBNR w KQkq - 0 4",
+      "result": "1-0",
+      "moves": 41,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "rnbqkb1r/ppp1pppp/5n2/3P4/3P4/8/PPP2PPP/RNBQKBNR w KQkq - 1 4",
+      "result": "0-1",
+      "moves": 56,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "rnbqkb1r/ppp1pppp/5n2/3P4/3P4/8/PPP2PPP/RNBQKBNR w KQkq - 1 4",
+      "result": "0-1",
+      "moves": 56,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "rnbqkb1r/ppppp1pp/5n2/5p2/2PP4/6P1/PP2PP1P/RNBQKBNR w KQkq - 0 4",
+      "result": "1-0",
+      "moves": 37,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "rnbqkb1r/ppppp1pp/5n2/5p2/2PP4/6P1/PP2PP1P/RNBQKBNR w KQkq - 0 4",
+      "result": "1-0",
+      "moves": 37,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "r1bqkb1r/pppn1ppp/4pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 2 5",
+      "result": "1-0",
+      "moves": 61,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "r1bqkb1r/pppn1ppp/4pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 2 5",
+      "result": "1-0",
+      "moves": 61,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 5",
+      "result": "1-0",
+      "moves": 45,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 5",
+      "result": "1-0",
+      "moves": 45,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "rnbqkb1r/1p2pppp/p2p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6",
+      "result": "1-0",
+      "moves": 69,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "rnbqkb1r/1p2pppp/p2p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6",
+      "result": "1-0",
+      "moves": 69,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "r1bqkb1r/2pp1ppp/p1n2n2/1p2p3/B3P3/5N2/PPPP1PPP/RNBQ1RK1 w kq - 0 7",
+      "result": "0-1",
+      "moves": 16,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "r1bqkb1r/2pp1ppp/p1n2n2/1p2p3/B3P3/5N2/PPPP1PPP/RNBQ1RK1 w kq - 0 7",
+      "result": "0-1",
+      "moves": 16,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "rnbqkb1r/ppp2ppp/4pn2/3pP3/3P4/2N5/PPP2PPP/R1BQKBNR w KQkq - 0 5",
+      "result": "1/2-1/2",
+      "moves": 90,
+      "termination": "repetition",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "rnbqkb1r/ppp2ppp/4pn2/3pP3/3P4/2N5/PPP2PPP/R1BQKBNR w KQkq - 0 5",
+      "result": "1/2-1/2",
+      "moves": 90,
+      "termination": "repetition",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "rn1qkbnr/pp2pppp/2p5/3pPb2/3P4/5N2/PPP2PPP/RNBQKB1R w KQkq - 2 5",
+      "result": "1-0",
+      "moves": 43,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "rn1qkbnr/pp2pppp/2p5/3pPb2/3P4/5N2/PPP2PPP/RNBQKB1R w KQkq - 2 5",
+      "result": "1-0",
+      "moves": 43,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP3PPP/R1BQKB1R w KQ - 0 6",
+      "result": "1-0",
+      "moves": 69,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP3PPP/R1BQKB1R w KQ - 0 6",
+      "result": "1-0",
+      "moves": 69,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4",
+      "result": "0-1",
+      "moves": 70,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4",
+      "result": "0-1",
+      "moves": 70,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "rnbqkb1r/p1pp1ppp/1p2pn2/8/2PP4/5NP1/PP2PP1P/RNBQKB1R w KQkq - 0 5",
+      "result": "1-0",
+      "moves": 73,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "rnbqkb1r/p1pp1ppp/1p2pn2/8/2PP4/5NP1/PP2PP1P/RNBQKB1R w KQkq - 0 5",
+      "result": "1-0",
+      "moves": 73,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "r1bqkbnr/pp1ppppp/2n5/2p5/2P5/2N3P1/PP1PPP1P/R1BQKBNR w KQkq - 0 4",
+      "result": "1-0",
+      "moves": 41,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "r1bqkbnr/pp1ppppp/2n5/2p5/2P5/2N3P1/PP1PPP1P/R1BQKBNR w KQkq - 0 4",
+      "result": "1-0",
+      "moves": 41,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "rnbqkb1r/ppp1pppp/5n2/3P4/3P4/8/PPP2PPP/RNBQKBNR w KQkq - 1 4",
+      "result": "0-1",
+      "moves": 56,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "rnbqkb1r/ppp1pppp/5n2/3P4/3P4/8/PPP2PPP/RNBQKBNR w KQkq - 1 4",
+      "result": "0-1",
+      "moves": 56,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_conservative",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "rnbqkb1r/ppppp1pp/5n2/5p2/2PP4/6P1/PP2PP1P/RNBQKBNR w KQkq - 0 4",
+      "result": "1-0",
+      "moves": 37,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "coach_tal_conservative",
+      "starting_fen": "rnbqkb1r/ppppp1pp/5n2/5p2/2PP4/6P1/PP2PP1P/RNBQKBNR w KQkq - 0 4",
+      "result": "1-0",
+      "moves": 37,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "r1bqkb1r/pppn1ppp/4pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 2 5",
+      "result": "1-0",
+      "moves": 61,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "r1bqkb1r/pppn1ppp/4pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 2 5",
+      "result": "1-0",
+      "moves": 61,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 5",
+      "result": "1-0",
+      "moves": 45,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 5",
+      "result": "1-0",
+      "moves": 45,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "rnbqkb1r/1p2pppp/p2p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6",
+      "result": "1-0",
+      "moves": 69,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "rnbqkb1r/1p2pppp/p2p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6",
+      "result": "1-0",
+      "moves": 69,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "r1bqkb1r/2pp1ppp/p1n2n2/1p2p3/B3P3/5N2/PPPP1PPP/RNBQ1RK1 w kq - 0 7",
+      "result": "0-1",
+      "moves": 16,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "r1bqkb1r/2pp1ppp/p1n2n2/1p2p3/B3P3/5N2/PPPP1PPP/RNBQ1RK1 w kq - 0 7",
+      "result": "0-1",
+      "moves": 16,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "rnbqkb1r/ppp2ppp/4pn2/3pP3/3P4/2N5/PPP2PPP/R1BQKBNR w KQkq - 0 5",
+      "result": "1/2-1/2",
+      "moves": 90,
+      "termination": "repetition",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "rnbqkb1r/ppp2ppp/4pn2/3pP3/3P4/2N5/PPP2PPP/R1BQKBNR w KQkq - 0 5",
+      "result": "1/2-1/2",
+      "moves": 90,
+      "termination": "repetition",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "rn1qkbnr/pp2pppp/2p5/3pPb2/3P4/5N2/PPP2PPP/RNBQKB1R w KQkq - 2 5",
+      "result": "1-0",
+      "moves": 43,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "rn1qkbnr/pp2pppp/2p5/3pPb2/3P4/5N2/PPP2PPP/RNBQKB1R w KQkq - 2 5",
+      "result": "1-0",
+      "moves": 43,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP3PPP/R1BQKB1R w KQ - 0 6",
+      "result": "1-0",
+      "moves": 69,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP3PPP/R1BQKB1R w KQ - 0 6",
+      "result": "1-0",
+      "moves": 69,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4",
+      "result": "0-1",
+      "moves": 70,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4",
+      "result": "0-1",
+      "moves": 70,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "rnbqkb1r/p1pp1ppp/1p2pn2/8/2PP4/5NP1/PP2PP1P/RNBQKB1R w KQkq - 0 5",
+      "result": "1-0",
+      "moves": 73,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "rnbqkb1r/p1pp1ppp/1p2pn2/8/2PP4/5NP1/PP2PP1P/RNBQKB1R w KQkq - 0 5",
+      "result": "1-0",
+      "moves": 73,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "r1bqkbnr/pp1ppppp/2n5/2p5/2P5/2N3P1/PP1PPP1P/R1BQKBNR w KQkq - 0 4",
+      "result": "1-0",
+      "moves": 41,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "r1bqkbnr/pp1ppppp/2n5/2p5/2P5/2N3P1/PP1PPP1P/R1BQKBNR w KQkq - 0 4",
+      "result": "1-0",
+      "moves": 41,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "rnbqkb1r/ppp1pppp/5n2/3P4/3P4/8/PPP2PPP/RNBQKBNR w KQkq - 1 4",
+      "result": "0-1",
+      "moves": 56,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "rnbqkb1r/ppp1pppp/5n2/3P4/3P4/8/PPP2PPP/RNBQKBNR w KQkq - 1 4",
+      "result": "0-1",
+      "moves": 56,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_balanced",
+      "black_config": "coach_tal_aggressive",
+      "starting_fen": "rnbqkb1r/ppppp1pp/5n2/5p2/2PP4/6P1/PP2PP1P/RNBQKBNR w KQkq - 0 4",
+      "result": "1-0",
+      "moves": 37,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "coach_tal_aggressive",
+      "black_config": "coach_tal_balanced",
+      "starting_fen": "rnbqkb1r/ppppp1pp/5n2/5p2/2PP4/6P1/PP2PP1P/RNBQKBNR w KQkq - 0 4",
+      "result": "1-0",
+      "moves": 37,
+      "termination": "checkmate",
+      "pgn": null
+    }
+  ],
+  "interrupted": false
+}

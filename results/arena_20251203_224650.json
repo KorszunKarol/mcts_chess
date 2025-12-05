@@ -1,0 +1,134 @@
+{
+  "timestamp": "2025-12-03T22:46:50.874499",
+  "model_path": "saved_models/best_model_pytorch.pt",
+  "positions_count": 4,
+  "games_per_matchup": 2,
+  "total_games": 8,
+  "completed_games": 8,
+  "configs": [
+    {
+      "name": "mcts_100",
+      "temperature": 0.25,
+      "use_mcts": true,
+      "mcts_simulations": 100,
+      "mcts_cpuct": 4.0,
+      "use_coach_tal": false,
+      "lambda_psych": 0.3,
+      "gamma_confusion": 0.5,
+      "delta_soundness": 0.15,
+      "top_k_candidates": 5
+    },
+    {
+      "name": "mcts_coach_tal",
+      "temperature": 0.25,
+      "use_mcts": true,
+      "mcts_simulations": 100,
+      "mcts_cpuct": 4.0,
+      "use_coach_tal": true,
+      "lambda_psych": 0.3,
+      "gamma_confusion": 0.5,
+      "delta_soundness": 0.15,
+      "top_k_candidates": 5
+    }
+  ],
+  "results": {
+    "mcts_100": {
+      "wins": 5,
+      "losses": 0,
+      "draws": 3,
+      "games": 8,
+      "score": 0.812
+    },
+    "mcts_coach_tal": {
+      "wins": 0,
+      "losses": 5,
+      "draws": 3,
+      "games": 8,
+      "score": 0.188
+    }
+  },
+  "head_to_head": {
+    "mcts_100 vs mcts_coach_tal": {
+      "wins": 5,
+      "losses": 0,
+      "draws": 3,
+      "games": 8,
+      "score": 0.812
+    }
+  },
+  "games": [
+    {
+      "white_config": "mcts_100",
+      "black_config": "mcts_coach_tal",
+      "starting_fen": "r1bqkb1r/pppn1ppp/4pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 2 5",
+      "result": "1/2-1/2",
+      "moves": 53,
+      "termination": "repetition",
+      "pgn": null
+    },
+    {
+      "white_config": "mcts_coach_tal",
+      "black_config": "mcts_100",
+      "starting_fen": "r1bqkb1r/pppn1ppp/4pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 2 5",
+      "result": "0-1",
+      "moves": 80,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "mcts_100",
+      "black_config": "mcts_coach_tal",
+      "starting_fen": "rnbqkb1r/1p2pppp/p2p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6",
+      "result": "1/2-1/2",
+      "moves": 91,
+      "termination": "repetition",
+      "pgn": null
+    },
+    {
+      "white_config": "mcts_coach_tal",
+      "black_config": "mcts_100",
+      "starting_fen": "rnbqkb1r/1p2pppp/p2p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6",
+      "result": "0-1",
+      "moves": 58,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "mcts_100",
+      "black_config": "mcts_coach_tal",
+      "starting_fen": "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP3PPP/R1BQKB1R w KQ - 0 6",
+      "result": "1-0",
+      "moves": 51,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "mcts_coach_tal",
+      "black_config": "mcts_100",
+      "starting_fen": "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP3PPP/R1BQKB1R w KQ - 0 6",
+      "result": "1/2-1/2",
+      "moves": 60,
+      "termination": "stalemate",
+      "pgn": null
+    },
+    {
+      "white_config": "mcts_100",
+      "black_config": "mcts_coach_tal",
+      "starting_fen": "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4",
+      "result": "1-0",
+      "moves": 47,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "mcts_coach_tal",
+      "black_config": "mcts_100",
+      "starting_fen": "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4",
+      "result": "0-1",
+      "moves": 66,
+      "termination": "checkmate",
+      "pgn": null
+    }
+  ],
+  "interrupted": false
+}

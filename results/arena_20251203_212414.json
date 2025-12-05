@@ -1,0 +1,775 @@
+{
+  "timestamp": "2025-12-03T21:24:14.312855",
+  "model_path": "saved_models/best_model_pytorch.pt",
+  "positions_count": 12,
+  "games_per_matchup": 2,
+  "total_games": 72,
+  "completed_games": 72,
+  "configs": [
+    {
+      "name": "baseline_t1.0",
+      "temperature": 1.0,
+      "use_mcts": false,
+      "mcts_simulations": 800,
+      "mcts_cpuct": 4.0,
+      "lambda_psych": 0.3,
+      "gamma_confusion": 0.5,
+      "delta_soundness": 0.15
+    },
+    {
+      "name": "sharp_t0.3",
+      "temperature": 0.3,
+      "use_mcts": false,
+      "mcts_simulations": 800,
+      "mcts_cpuct": 4.0,
+      "lambda_psych": 0.3,
+      "gamma_confusion": 0.5,
+      "delta_soundness": 0.15
+    },
+    {
+      "name": "greedy_t0.1",
+      "temperature": 0.1,
+      "use_mcts": false,
+      "mcts_simulations": 800,
+      "mcts_cpuct": 4.0,
+      "lambda_psych": 0.3,
+      "gamma_confusion": 0.5,
+      "delta_soundness": 0.15
+    },
+    {
+      "name": "exploratory_t1.5",
+      "temperature": 1.5,
+      "use_mcts": false,
+      "mcts_simulations": 800,
+      "mcts_cpuct": 4.0,
+      "lambda_psych": 0.3,
+      "gamma_confusion": 0.5,
+      "delta_soundness": 0.15
+    }
+  ],
+  "results": {
+    "baseline_t1.0": {
+      "wins": 7,
+      "losses": 13,
+      "draws": 16,
+      "games": 36,
+      "score": 0.417
+    },
+    "sharp_t0.3": {
+      "wins": 21,
+      "losses": 5,
+      "draws": 10,
+      "games": 36,
+      "score": 0.722
+    },
+    "greedy_t0.1": {
+      "wins": 20,
+      "losses": 3,
+      "draws": 13,
+      "games": 36,
+      "score": 0.736
+    },
+    "exploratory_t1.5": {
+      "wins": 1,
+      "losses": 28,
+      "draws": 7,
+      "games": 36,
+      "score": 0.125
+    }
+  },
+  "head_to_head": {
+    "baseline_t1.0 vs sharp_t0.3": {
+      "wins": 1,
+      "losses": 7,
+      "draws": 4,
+      "games": 12,
+      "score": 0.25
+    },
+    "baseline_t1.0 vs greedy_t0.1": {
+      "wins": 0,
+      "losses": 5,
+      "draws": 7,
+      "games": 12,
+      "score": 0.292
+    },
+    "baseline_t1.0 vs exploratory_t1.5": {
+      "wins": 6,
+      "losses": 1,
+      "draws": 5,
+      "games": 12,
+      "score": 0.708
+    },
+    "greedy_t0.1 vs sharp_t0.3": {
+      "wins": 4,
+      "losses": 3,
+      "draws": 5,
+      "games": 12,
+      "score": 0.542
+    },
+    "exploratory_t1.5 vs sharp_t0.3": {
+      "wins": 0,
+      "losses": 11,
+      "draws": 1,
+      "games": 12,
+      "score": 0.042
+    },
+    "exploratory_t1.5 vs greedy_t0.1": {
+      "wins": 0,
+      "losses": 11,
+      "draws": 1,
+      "games": 12,
+      "score": 0.042
+    }
+  },
+  "games": [
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "sharp_t0.3",
+      "starting_fen": "r1bqkb1r/pppn1ppp/4pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 2 5",
+      "result": "0-1",
+      "moves": 134,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "sharp_t0.3",
+      "starting_fen": "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 5",
+      "result": "1/2-1/2",
+      "moves": 59,
+      "termination": "repetition",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "sharp_t0.3",
+      "starting_fen": "rnbqkb1r/1p2pppp/p2p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6",
+      "result": "0-1",
+      "moves": 110,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "sharp_t0.3",
+      "starting_fen": "r1bqkb1r/2pp1ppp/p1n2n2/1p2p3/B3P3/5N2/PPPP1PPP/RNBQ1RK1 w kq - 0 7",
+      "result": "1/2-1/2",
+      "moves": 87,
+      "termination": "repetition",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "sharp_t0.3",
+      "starting_fen": "rnbqkb1r/ppp2ppp/4pn2/3pP3/3P4/2N5/PPP2PPP/R1BQKBNR w KQkq - 0 5",
+      "result": "0-1",
+      "moves": 40,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "sharp_t0.3",
+      "starting_fen": "rn1qkbnr/pp2pppp/2p5/3pPb2/3P4/5N2/PPP2PPP/RNBQKB1R w KQkq - 2 5",
+      "result": "0-1",
+      "moves": 84,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "sharp_t0.3",
+      "starting_fen": "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP3PPP/R1BQKB1R w KQ - 0 6",
+      "result": "0-1",
+      "moves": 96,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "sharp_t0.3",
+      "starting_fen": "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4",
+      "result": "1/2-1/2",
+      "moves": 121,
+      "termination": "repetition",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "sharp_t0.3",
+      "starting_fen": "rnbqkb1r/p1pp1ppp/1p2pn2/8/2PP4/5NP1/PP2PP1P/RNBQKB1R w KQkq - 0 5",
+      "result": "1/2-1/2",
+      "moves": 86,
+      "termination": "stalemate",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "sharp_t0.3",
+      "starting_fen": "r1bqkbnr/pp1ppppp/2n5/2p5/2P5/2N3P1/PP1PPP1P/R1BQKBNR w KQkq - 0 4",
+      "result": "1-0",
+      "moves": 95,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "sharp_t0.3",
+      "starting_fen": "rnbqkb1r/ppp1pppp/5n2/3P4/3P4/8/PPP2PPP/RNBQKBNR w KQkq - 1 4",
+      "result": "0-1",
+      "moves": 44,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "sharp_t0.3",
+      "starting_fen": "rnbqkb1r/ppppp1pp/5n2/5p2/2PP4/6P1/PP2PP1P/RNBQKBNR w KQkq - 0 4",
+      "result": "0-1",
+      "moves": 92,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "greedy_t0.1",
+      "starting_fen": "r1bqkb1r/pppn1ppp/4pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 2 5",
+      "result": "1/2-1/2",
+      "moves": 88,
+      "termination": "stalemate",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "greedy_t0.1",
+      "starting_fen": "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 5",
+      "result": "0-1",
+      "moves": 108,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "greedy_t0.1",
+      "starting_fen": "rnbqkb1r/1p2pppp/p2p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6",
+      "result": "0-1",
+      "moves": 90,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "greedy_t0.1",
+      "starting_fen": "r1bqkb1r/2pp1ppp/p1n2n2/1p2p3/B3P3/5N2/PPPP1PPP/RNBQ1RK1 w kq - 0 7",
+      "result": "0-1",
+      "moves": 106,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "greedy_t0.1",
+      "starting_fen": "rnbqkb1r/ppp2ppp/4pn2/3pP3/3P4/2N5/PPP2PPP/R1BQKBNR w KQkq - 0 5",
+      "result": "0-1",
+      "moves": 74,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "greedy_t0.1",
+      "starting_fen": "rn1qkbnr/pp2pppp/2p5/3pPb2/3P4/5N2/PPP2PPP/RNBQKB1R w KQkq - 2 5",
+      "result": "1/2-1/2",
+      "moves": 98,
+      "termination": "repetition",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "greedy_t0.1",
+      "starting_fen": "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP3PPP/R1BQKB1R w KQ - 0 6",
+      "result": "1/2-1/2",
+      "moves": 83,
+      "termination": "repetition",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "greedy_t0.1",
+      "starting_fen": "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4",
+      "result": "1/2-1/2",
+      "moves": 106,
+      "termination": "stalemate",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "greedy_t0.1",
+      "starting_fen": "rnbqkb1r/p1pp1ppp/1p2pn2/8/2PP4/5NP1/PP2PP1P/RNBQKB1R w KQkq - 0 5",
+      "result": "1/2-1/2",
+      "moves": 45,
+      "termination": "repetition",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "greedy_t0.1",
+      "starting_fen": "r1bqkbnr/pp1ppppp/2n5/2p5/2P5/2N3P1/PP1PPP1P/R1BQKBNR w KQkq - 0 4",
+      "result": "1/2-1/2",
+      "moves": 70,
+      "termination": "repetition",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "greedy_t0.1",
+      "starting_fen": "rnbqkb1r/ppp1pppp/5n2/3P4/3P4/8/PPP2PPP/RNBQKBNR w KQkq - 1 4",
+      "result": "0-1",
+      "moves": 46,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "greedy_t0.1",
+      "starting_fen": "rnbqkb1r/ppppp1pp/5n2/5p2/2PP4/6P1/PP2PP1P/RNBQKBNR w KQkq - 0 4",
+      "result": "1/2-1/2",
+      "moves": 82,
+      "termination": "repetition",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "r1bqkb1r/pppn1ppp/4pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 2 5",
+      "result": "1-0",
+      "moves": 77,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 5",
+      "result": "1-0",
+      "moves": 53,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "rnbqkb1r/1p2pppp/p2p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6",
+      "result": "0-1",
+      "moves": 76,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "r1bqkb1r/2pp1ppp/p1n2n2/1p2p3/B3P3/5N2/PPPP1PPP/RNBQ1RK1 w kq - 0 7",
+      "result": "1/2-1/2",
+      "moves": 200,
+      "termination": "timeout",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "rnbqkb1r/ppp2ppp/4pn2/3pP3/3P4/2N5/PPP2PPP/R1BQKBNR w KQkq - 0 5",
+      "result": "1-0",
+      "moves": 103,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "rn1qkbnr/pp2pppp/2p5/3pPb2/3P4/5N2/PPP2PPP/RNBQKB1R w KQkq - 2 5",
+      "result": "1-0",
+      "moves": 51,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP3PPP/R1BQKB1R w KQ - 0 6",
+      "result": "1/2-1/2",
+      "moves": 67,
+      "termination": "repetition",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4",
+      "result": "1-0",
+      "moves": 35,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "rnbqkb1r/p1pp1ppp/1p2pn2/8/2PP4/5NP1/PP2PP1P/RNBQKB1R w KQkq - 0 5",
+      "result": "1/2-1/2",
+      "moves": 185,
+      "termination": "stalemate",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "r1bqkbnr/pp1ppppp/2n5/2p5/2P5/2N3P1/PP1PPP1P/R1BQKBNR w KQkq - 0 4",
+      "result": "1/2-1/2",
+      "moves": 124,
+      "termination": "insufficient",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "rnbqkb1r/ppp1pppp/5n2/3P4/3P4/8/PPP2PPP/RNBQKBNR w KQkq - 1 4",
+      "result": "1/2-1/2",
+      "moves": 172,
+      "termination": "stalemate",
+      "pgn": null
+    },
+    {
+      "white_config": "baseline_t1.0",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "rnbqkb1r/ppppp1pp/5n2/5p2/2PP4/6P1/PP2PP1P/RNBQKBNR w KQkq - 0 4",
+      "result": "1-0",
+      "moves": 87,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "sharp_t0.3",
+      "black_config": "greedy_t0.1",
+      "starting_fen": "r1bqkb1r/pppn1ppp/4pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 2 5",
+      "result": "1-0",
+      "moves": 51,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "sharp_t0.3",
+      "black_config": "greedy_t0.1",
+      "starting_fen": "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 5",
+      "result": "0-1",
+      "moves": 42,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "sharp_t0.3",
+      "black_config": "greedy_t0.1",
+      "starting_fen": "rnbqkb1r/1p2pppp/p2p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6",
+      "result": "0-1",
+      "moves": 38,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "sharp_t0.3",
+      "black_config": "greedy_t0.1",
+      "starting_fen": "r1bqkb1r/2pp1ppp/p1n2n2/1p2p3/B3P3/5N2/PPPP1PPP/RNBQ1RK1 w kq - 0 7",
+      "result": "1-0",
+      "moves": 45,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "sharp_t0.3",
+      "black_config": "greedy_t0.1",
+      "starting_fen": "rnbqkb1r/ppp2ppp/4pn2/3pP3/3P4/2N5/PPP2PPP/R1BQKBNR w KQkq - 0 5",
+      "result": "1-0",
+      "moves": 153,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "sharp_t0.3",
+      "black_config": "greedy_t0.1",
+      "starting_fen": "rn1qkbnr/pp2pppp/2p5/3pPb2/3P4/5N2/PPP2PPP/RNBQKB1R w KQkq - 2 5",
+      "result": "1/2-1/2",
+      "moves": 111,
+      "termination": "repetition",
+      "pgn": null
+    },
+    {
+      "white_config": "sharp_t0.3",
+      "black_config": "greedy_t0.1",
+      "starting_fen": "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP3PPP/R1BQKB1R w KQ - 0 6",
+      "result": "1/2-1/2",
+      "moves": 119,
+      "termination": "stalemate",
+      "pgn": null
+    },
+    {
+      "white_config": "sharp_t0.3",
+      "black_config": "greedy_t0.1",
+      "starting_fen": "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4",
+      "result": "0-1",
+      "moves": 136,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "sharp_t0.3",
+      "black_config": "greedy_t0.1",
+      "starting_fen": "rnbqkb1r/p1pp1ppp/1p2pn2/8/2PP4/5NP1/PP2PP1P/RNBQKB1R w KQkq - 0 5",
+      "result": "0-1",
+      "moves": 60,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "sharp_t0.3",
+      "black_config": "greedy_t0.1",
+      "starting_fen": "r1bqkbnr/pp1ppppp/2n5/2p5/2P5/2N3P1/PP1PPP1P/R1BQKBNR w KQkq - 0 4",
+      "result": "1/2-1/2",
+      "moves": 100,
+      "termination": "stalemate",
+      "pgn": null
+    },
+    {
+      "white_config": "sharp_t0.3",
+      "black_config": "greedy_t0.1",
+      "starting_fen": "rnbqkb1r/ppp1pppp/5n2/3P4/3P4/8/PPP2PPP/RNBQKBNR w KQkq - 1 4",
+      "result": "1/2-1/2",
+      "moves": 64,
+      "termination": "repetition",
+      "pgn": null
+    },
+    {
+      "white_config": "sharp_t0.3",
+      "black_config": "greedy_t0.1",
+      "starting_fen": "rnbqkb1r/ppppp1pp/5n2/5p2/2PP4/6P1/PP2PP1P/RNBQKBNR w KQkq - 0 4",
+      "result": "1/2-1/2",
+      "moves": 44,
+      "termination": "repetition",
+      "pgn": null
+    },
+    {
+      "white_config": "sharp_t0.3",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "r1bqkb1r/pppn1ppp/4pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 2 5",
+      "result": "1-0",
+      "moves": 49,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "sharp_t0.3",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 5",
+      "result": "1/2-1/2",
+      "moves": 61,
+      "termination": "repetition",
+      "pgn": null
+    },
+    {
+      "white_config": "sharp_t0.3",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "rnbqkb1r/1p2pppp/p2p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6",
+      "result": "1-0",
+      "moves": 59,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "sharp_t0.3",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "r1bqkb1r/2pp1ppp/p1n2n2/1p2p3/B3P3/5N2/PPPP1PPP/RNBQ1RK1 w kq - 0 7",
+      "result": "1-0",
+      "moves": 43,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "sharp_t0.3",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "rnbqkb1r/ppp2ppp/4pn2/3pP3/3P4/2N5/PPP2PPP/R1BQKBNR w KQkq - 0 5",
+      "result": "1-0",
+      "moves": 83,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "sharp_t0.3",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "rn1qkbnr/pp2pppp/2p5/3pPb2/3P4/5N2/PPP2PPP/RNBQKB1R w KQkq - 2 5",
+      "result": "1-0",
+      "moves": 55,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "sharp_t0.3",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP3PPP/R1BQKB1R w KQ - 0 6",
+      "result": "1-0",
+      "moves": 57,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "sharp_t0.3",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4",
+      "result": "1-0",
+      "moves": 105,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "sharp_t0.3",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "rnbqkb1r/p1pp1ppp/1p2pn2/8/2PP4/5NP1/PP2PP1P/RNBQKB1R w KQkq - 0 5",
+      "result": "1-0",
+      "moves": 31,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "sharp_t0.3",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "r1bqkbnr/pp1ppppp/2n5/2p5/2P5/2N3P1/PP1PPP1P/R1BQKBNR w KQkq - 0 4",
+      "result": "1-0",
+      "moves": 59,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "sharp_t0.3",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "rnbqkb1r/ppp1pppp/5n2/3P4/3P4/8/PPP2PPP/RNBQKBNR w KQkq - 1 4",
+      "result": "1-0",
+      "moves": 73,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "sharp_t0.3",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "rnbqkb1r/ppppp1pp/5n2/5p2/2PP4/6P1/PP2PP1P/RNBQKBNR w KQkq - 0 4",
+      "result": "1-0",
+      "moves": 63,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "greedy_t0.1",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "r1bqkb1r/pppn1ppp/4pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 2 5",
+      "result": "1-0",
+      "moves": 55,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "greedy_t0.1",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 5",
+      "result": "1-0",
+      "moves": 41,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "greedy_t0.1",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "rnbqkb1r/1p2pppp/p2p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6",
+      "result": "1-0",
+      "moves": 45,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "greedy_t0.1",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "r1bqkb1r/2pp1ppp/p1n2n2/1p2p3/B3P3/5N2/PPPP1PPP/RNBQ1RK1 w kq - 0 7",
+      "result": "1-0",
+      "moves": 33,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "greedy_t0.1",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "rnbqkb1r/ppp2ppp/4pn2/3pP3/3P4/2N5/PPP2PPP/R1BQKBNR w KQkq - 0 5",
+      "result": "1-0",
+      "moves": 33,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "greedy_t0.1",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "rn1qkbnr/pp2pppp/2p5/3pPb2/3P4/5N2/PPP2PPP/RNBQKB1R w KQkq - 2 5",
+      "result": "1-0",
+      "moves": 63,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "greedy_t0.1",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP3PPP/R1BQKB1R w KQ - 0 6",
+      "result": "1-0",
+      "moves": 91,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "greedy_t0.1",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4",
+      "result": "1-0",
+      "moves": 89,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "greedy_t0.1",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "rnbqkb1r/p1pp1ppp/1p2pn2/8/2PP4/5NP1/PP2PP1P/RNBQKB1R w KQkq - 0 5",
+      "result": "1-0",
+      "moves": 59,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "greedy_t0.1",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "r1bqkbnr/pp1ppppp/2n5/2p5/2P5/2N3P1/PP1PPP1P/R1BQKBNR w KQkq - 0 4",
+      "result": "1-0",
+      "moves": 79,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "greedy_t0.1",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "rnbqkb1r/ppp1pppp/5n2/3P4/3P4/8/PPP2PPP/RNBQKBNR w KQkq - 1 4",
+      "result": "1-0",
+      "moves": 59,
+      "termination": "checkmate",
+      "pgn": null
+    },
+    {
+      "white_config": "greedy_t0.1",
+      "black_config": "exploratory_t1.5",
+      "starting_fen": "rnbqkb1r/ppppp1pp/5n2/5p2/2PP4/6P1/PP2PP1P/RNBQKBNR w KQkq - 0 4",
+      "result": "1/2-1/2",
+      "moves": 52,
+      "termination": "repetition",
+      "pgn": null
+    }
+  ],
+  "interrupted": false
+}

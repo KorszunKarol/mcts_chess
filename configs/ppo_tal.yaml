@@ -21,7 +21,7 @@ env:
 # Agent Model
 # =============================================================================
 agent:
-  weights_path: "saved_models/tal_v1.pt"
+  weights_path: "saved_models/best_model_pytorch.pt"
   input_channels: 34
   action_space_size: 4672
 
@@ -77,8 +77,7 @@ training:
   save_interval: 100         # Checkpoint every N iterations
   eval_interval: 50          # Evaluate every N iterations
   checkpoint_dir: "checkpoints/ppo_tal"
-  wandb_project: "tal-rl"
-  wandb_entity: null         # Your WandB username/team
+  tensorboard_log_dir: "runs/ppo_tal"
   seed: 42
   use_mixed_precision: true
 

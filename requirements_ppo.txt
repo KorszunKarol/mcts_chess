@@ -1,0 +1,51 @@
+# Tal-RL PPO Training Pipeline Dependencies
+# Install with: pip install -r requirements_ppo.txt
+
+# =============================================================================
+# Core Dependencies (already in project)
+# =============================================================================
+torch>=2.0.0
+numpy>=1.24.0
+python-chess>=1.999
+h5py>=3.8.0
+
+# =============================================================================
+# JAX Ecosystem (for vectorized environments and batched MCTS)
+# =============================================================================
+# NOTE: For CUDA 12.x support. Adjust version suffix for your CUDA version.
+# See: https://github.com/google/jax#installation
+jax[cuda12_pip]>=0.4.20
+jaxlib>=0.4.20
+
+# JAX neural network library (for porting PyTorch model)
+flax>=0.8.0
+
+# DeepMind's batched MCTS library
+mctx>=0.0.5
+
+# Vectorized game environments (includes chess)
+pgx>=2.0.0
+
+# Configuration management
+pydantic>=2.0.0
+pyyaml>=6.0.0
+omegaconf>=2.3.0
+
+# =============================================================================
+# Utilities
+# =============================================================================
+# Progress bars
+tqdm>=4.65.0
+
+# Typing extensions
+typing_extensions>=4.5.0
+
+# Logging
+rich>=13.0.0
+
+# =============================================================================
+# Development / Testing
+# =============================================================================
+pytest>=7.0.0
+pytest-benchmark>=4.0.0
+

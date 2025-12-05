@@ -19,14 +19,15 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, Any, Optional, Tuple, TYPE_CHECKING
+from typing import Dict, Any, Optional, TYPE_CHECKING
 
 # Lazy JAX import to avoid import errors when JAX is not properly configured
 if TYPE_CHECKING:
     import jax
     import jax.numpy as jnp
 
-from src.training_ppo.rewards.normalizer import RunningMeanStd, RewardScaler
+# Runtime JAX import (expected to be available in training/test environments)
+from src.training_ppo.rewards.normalizer import RewardScaler
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,10 @@ def _import_jax():
     import jax
     import jax.numpy as jnp
     return jax, jnp
+
+
+# Provide module-level handles for jax/jnp users
+jax, jnp = _import_jax()
 
 
 @dataclass
@@ -281,8 +286,6 @@ class TalRewardEngineJIT:
         Returns:
             Tuple of (rewards, metrics_dict).
         """
-        jax, jnp = _import_jax()
-        
         if cls._jit_fn is None:
             @jax.jit
             def _compute(q_truth, v_victim, pi_victim, game_outcomes, sound_mask, alpha, beta):

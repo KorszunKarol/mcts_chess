@@ -19,9 +19,11 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Dict, Any, Optional, List
 import time
+from pathlib import Path
 
 import numpy as np
 import torch
+from torch.utils.tensorboard import SummaryWriter
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +90,7 @@ class TalMetricsLogger:
     """
     Logging utility for Tal-RL training.
     
-    Integrates with WandB for experiment tracking and provides
+    Integrates TensorBoard for experiment tracking and provides
     custom metrics specific to cognitive asymmetry training.
     
     Key Tal Metrics:
@@ -115,23 +117,20 @@ class TalMetricsLogger:
     
     def __init__(
         self,
-        project: str = "tal-rl",
-        entity: Optional[str] = None,
+        log_dir: str = "runs/ppo",
         config: Optional[Dict[str, Any]] = None,
         run_name: Optional[str] = None,
-        use_wandb: bool = True,
+        # Backward compatibility: ignore use_wandb if passed by older code
+        use_wandb: Optional[bool] = None,
     ):
         """
         Initialize the logger.
         
         Args:
-            project: WandB project name.
-            entity: WandB entity/team.
-            config: Configuration to log.
-            run_name: Optional run name.
-            use_wandb: Whether to use WandB (False for testing).
+            log_dir: TensorBoard log directory.
+            config: Configuration to log (stored as text in TensorBoard).
+            run_name: Optional run name appended to log_dir.
         """
-        self.use_wandb = use_wandb
         self.start_time = time.time()
         
         # Aggregators for different metric types
@@ -141,49 +140,21 @@ class TalMetricsLogger:
         self.style_aggregator = MetricAggregator()
         self.safety_aggregator = MetricAggregator()
         
-        # Initialize WandB
-        if use_wandb:
+        # Initialize TensorBoard writer
+        base_dir = Path(log_dir)
+        if run_name is None:
+            # Default to timestamped run directory for clearer TensorBoard runs
+            run_name = time.strftime("run_%Y%m%d_%H%M%S")
+        base_dir = base_dir / run_name
+        base_dir.mkdir(parents=True, exist_ok=True)
+        self.writer = SummaryWriter(log_dir=str(base_dir))
+        if config is not None:
             try:
-                import wandb
-                
-                self.wandb = wandb
-                
-                wandb.init(
-                    project=project,
-                    entity=entity,
-                    config=config,
-                    name=run_name,
-                )
-                
-                # Define custom metrics with step_metric for proper x-axis
-                wandb.define_metric("iteration")
-                wandb.define_metric("timesteps")
-                
-                # === Cognitive Asymmetry (The "Tal" Logic) ===
-                wandb.define_metric("tal/*", step_metric="iteration")
-                
-                # === Style Metrics (Tal Personality Verification) ===
-                wandb.define_metric("style/*", step_metric="iteration")
-                
-                # === Safety Checks (Hope Chess Prevention) ===
-                wandb.define_metric("safety/*", step_metric="iteration")
-                
-                # === PPO Training Health ===
-                wandb.define_metric("ppo/*", step_metric="iteration")
-                
-                # === Environment / Game Metrics ===
-                wandb.define_metric("env/*", step_metric="iteration")
-                
-                # === Performance Metrics ===
-                wandb.define_metric("perf/*", step_metric="iteration")
-                
-                logger.info(f"WandB initialized: {project}/{wandb.run.name}")
-            except ImportError:
-                logger.warning("WandB not installed. Logging to console only.")
-                self.use_wandb = False
-                self.wandb = None
-        else:
-            self.wandb = None
+                import json
+
+                self.writer.add_text("config", f"```json\n{json.dumps(config, indent=2)}\n```", 0)
+            except Exception:
+                pass
         
         # Counters
         self.total_timesteps = 0
@@ -354,7 +325,7 @@ class TalMetricsLogger:
         elapsed = time.time() - self.start_time
         sps = self.total_timesteps / max(1, elapsed)
         log_dict["perf/steps_per_second"] = sps
-
+        
         # GPU memory tracking (allocated vs reserved)
         vram_stats = self._get_vram_stats()
         if vram_stats is not None:
@@ -365,9 +336,13 @@ class TalMetricsLogger:
                 reserved_gb / total_gb * 100 if total_gb > 0 else 0.0
             )
         
-        # Log to WandB
-        if self.use_wandb and self.wandb is not None:
-            self.wandb.log(log_dict)
+        # Log to TensorBoard
+        for key, value in log_dict.items():
+            if isinstance(value, (int, float)):
+                try:
+                    self.writer.add_scalar(key, value, global_step=iteration)
+                except Exception:
+                    pass
         
         # Console logging
         self._log_to_console(iteration, log_dict)
@@ -453,19 +428,19 @@ class TalMetricsLogger:
         path: str,
         iteration: int,
     ) -> None:
-        """Log model checkpoint to WandB."""
-        if self.use_wandb and self.wandb is not None:
-            artifact = self.wandb.Artifact(
-                f"model-{iteration}",
-                type="model",
-            )
-            artifact.add_file(path)
-            self.wandb.log_artifact(artifact)
+        """Log model checkpoint path to TensorBoard."""
+        try:
+            self.writer.add_text("checkpoints/path", f"{iteration}: {path}", iteration)
+        except Exception:
+            pass
     
     def finish(self) -> None:
-        """Finish logging and close WandB run."""
-        if self.use_wandb and self.wandb is not None:
-            self.wandb.finish()
+        """Finish logging and close TensorBoard writer."""
+        try:
+            self.writer.flush()
+            self.writer.close()
+        except Exception:
+            pass
         
         elapsed = time.time() - self.start_time
         logger.info(
@@ -477,26 +452,26 @@ class TalMetricsLogger:
 
 def create_logger(
     config: Optional[Any] = None,
-    use_wandb: bool = True,
+    log_dir: Optional[str] = None,
+    run_name: Optional[str] = None,
 ) -> TalMetricsLogger:
     """
     Factory function to create TalMetricsLogger.
     
     Args:
         config: Training configuration.
-        use_wandb: Whether to use WandB.
+        log_dir: Override TensorBoard log directory.
         
     Returns:
         TalMetricsLogger instance.
     """
-    project = "tal-rl"
-    entity = None
-    
+    # Determine log directory
+    tb_dir = log_dir or "runs/ppo"
     if config is not None and hasattr(config, "training"):
-        project = getattr(config.training, "wandb_project", project)
-        entity = getattr(config.training, "wandb_entity", entity)
+        tb_dir = getattr(config.training, "tensorboard_log_dir", tb_dir)
+        run_name = getattr(config.training, "tensorboard_run_name", run_name)
     
-    # Convert config to dict for WandB
+    # Convert config to dict for logging
     config_dict = None
     if config is not None:
         try:
@@ -506,9 +481,8 @@ def create_logger(
             config_dict = dict(config) if hasattr(config, "__dict__") else None
     
     return TalMetricsLogger(
-        project=project,
-        entity=entity,
+        log_dir=tb_dir,
         config=config_dict,
-        use_wandb=use_wandb,
+        run_name=run_name,
     )
 

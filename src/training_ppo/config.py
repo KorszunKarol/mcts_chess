@@ -77,8 +77,8 @@ class TrainingConfig:
     save_interval: int = 100  # Save checkpoint every N iterations
     eval_interval: int = 50  # Evaluate every N iterations
     checkpoint_dir: str = "checkpoints/ppo_tal"
-    wandb_project: str = "tal-rl"
-    wandb_entity: Optional[str] = None
+    tensorboard_log_dir: str = "runs/ppo_tal"
+    tensorboard_run_name: Optional[str] = None  # If None, auto timestamp
     seed: int = 42
     use_mixed_precision: bool = False  # Use mixed precision training (FP16)
     

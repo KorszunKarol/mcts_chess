@@ -201,8 +201,8 @@ def test_metrics_logger():
     assert stats["loss"]["count"] == 2
     assert abs(stats["loss"]["mean"] - 0.4) < 0.01
     
-    # Test logger without WandB
-    logger_obj = TalMetricsLogger(use_wandb=False)
+    # Test logger with TensorBoard
+    logger_obj = TalMetricsLogger()
     logger_obj.log_step({"reward": 1.0}, num_envs=1)
     logger_obj.log_iteration(0, {"policy_loss": 0.1})
     logger_obj.finish()

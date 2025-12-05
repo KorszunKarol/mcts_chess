@@ -159,3 +159,9 @@ Thumbs.db
 # Other
 .git.bak/
 AlphaZeroFromScratch-main/
+
+# Ignore weight blobs
+src/weights/
+research_files_20251128_201819/src/weights/
+*.keras
+*.h5
